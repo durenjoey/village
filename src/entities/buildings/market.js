@@ -15,6 +15,10 @@ function addMarketStand(parent, x, z, rotation) {
     // Create market stand group
     const stand = new THREE.Group();
     
+    // Set userData for identification and drag-drop functionality
+    const standId = window.LabelUtils ? window.LabelUtils.generateId('market_stand', x, z) : `MarketStand`;
+    stand.userData = { id: standId, type: 'market_stand' };
+    
     // Stand base
     const baseGeometry = new THREE.BoxGeometry(3, 0.2, 2);
     const baseMaterial = new THREE.MeshStandardMaterial({

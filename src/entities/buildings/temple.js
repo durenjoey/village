@@ -15,6 +15,10 @@ function addTemple(parent, x, z, rotation) {
     // Create temple group
     const temple = new THREE.Group();
     
+    // Set userData for identification and drag-drop functionality
+    const templeId = window.LabelUtils ? window.LabelUtils.generateId('temple', x, z) : `Temple`;
+    temple.userData = { id: templeId, type: 'temple' };
+    
     // Temple base (platform)
     const baseGeometry = new THREE.BoxGeometry(12, 1, 12);
     const baseMaterial = new THREE.MeshStandardMaterial({

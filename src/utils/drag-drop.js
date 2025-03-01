@@ -231,7 +231,8 @@ class DragDropManager {
                    (object.userData.type === 'house' || 
                     object.userData.type === 'tree' ||
                     object.userData.type === 'market_stand' ||
-                    object.userData.type === 'blacksmith');
+                    object.userData.type === 'blacksmith' ||
+                    object.userData.type === 'temple');
         });
         
         if (draggableIntersects.length > 0) {

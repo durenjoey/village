@@ -15,6 +15,10 @@ function addBlacksmith(parent, x, z, rotation) {
     // Create blacksmith group
     const blacksmith = new THREE.Group();
     
+    // Set userData for identification and drag-drop functionality
+    const blacksmithId = window.LabelUtils ? window.LabelUtils.generateId('blacksmith', x, z) : `Blacksmith`;
+    blacksmith.userData = { id: blacksmithId, type: 'blacksmith' };
+    
     // Main building
     const buildingGeometry = new THREE.BoxGeometry(5, 3, 4);
     const buildingMaterial = new THREE.MeshStandardMaterial({
