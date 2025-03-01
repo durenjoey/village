@@ -199,28 +199,51 @@ function addMarketItems(stand) {
  * @param {number} count - Number of stands to add
  */
 function addMarketStands(parent, centerX, centerZ, count) {
+    if (window.Logger) {
+        Logger.info(`Adding ${count} market stands around (${centerX}, ${centerZ})`);
+    } else {
+        console.log(`Adding ${count} market stands around (${centerX}, ${centerZ})`);
+    }
+    
     // Add several market stands
     for (let i = 0; i < count; i++) {
         const angle = Math.PI / 6 * i - Math.PI / 6;
-        const distance = 5;
+        const distance = 8; // Increased distance between stands to avoid overlaps
         const x = centerX + Math.cos(angle) * distance;
         const z = centerZ + Math.sin(angle) * distance;
+        
+        // Check if position is already occupied (if terrain has collision detection)
+        if (parent.parent && parent.parent.isPositionOccupied && 
+            parent.parent.isPositionOccupied(x, z, 6)) {
+            if (window.Logger) {
+                Logger.debug(`Skipped market stand at occupied position ${x}, ${z}`);
+            } else {
+                console.log(`Skipped market stand at occupied position ${x}, ${z}`);
+            }
+            continue; // Skip this position
+        }
         
         // Add market stand
         const stand = addMarketStand(parent, x, z, Math.PI / 2 + angle);
         
         // Mark position as occupied in terrain if possible
-        // This helps with collision detection for trees
+        // This helps with collision detection for trees and houses
         if (parent.parent && parent.parent.markPositionOccupied) {
-            const standRadius = 5; // Increased radius for better collision detection
+            const standRadius = 6; // Increased radius for better collision detection
             parent.parent.markPositionOccupied(x, z, standRadius, 'market_stand');
             
             if (window.Logger) {
-                Logger.debug(`Marked market stand position as occupied: ${x}, ${z}`);
+                Logger.debug(`Marked market stand position as occupied: ${x}, ${z} with radius ${standRadius}`);
             } else {
-                console.log(`Marked market stand position as occupied: ${x}, ${z}`);
+                console.log(`Marked market stand position as occupied: ${x}, ${z} with radius ${standRadius}`);
             }
         }
+    }
+    
+    if (window.Logger) {
+        Logger.info(`Finished adding market stands`);
+    } else {
+        console.log(`Finished adding market stands`);
     }
 }
 

@@ -97,10 +97,10 @@ class Terrain extends Entity {
         // Add dirt patches
         this.addDirtPatches();
         
-        // Add Whiterun-inspired buildings first
-        this.addWhiterunBuildings();
+        // Add buildings in a specific order to ensure proper collision detection
+        this.addBuildingsInOrder();
         
-        // Add trees after buildings to ensure proper collision detection
+        // Add trees after all buildings to ensure proper collision detection
         this.addTrees();
         
         if (window.Logger) {
@@ -187,7 +187,7 @@ class Terrain extends Entity {
             const trunkRadius = 0.2 + Math.random() * 0.2;
             
             // Check if position is already occupied
-            const occupationRadius = treeHeight * 0.4; // Use the tree's width as occupation radius
+            const occupationRadius = treeHeight * 0.6; // Increased radius for better collision detection
             if (this.isPositionOccupied(x, z, occupationRadius)) {
                 continue; // Skip this position and try again
             }
@@ -346,7 +346,181 @@ class Terrain extends Entity {
     }
     
     /**
-     * Add Whiterun-inspired buildings to the terrain
+     * Add buildings in a specific order to ensure proper collision detection
+     */
+    addBuildingsInOrder() {
+        if (window.Logger) {
+            Logger.info('Adding buildings in order...');
+        } else {
+            console.log('Adding buildings in order...');
+        }
+        
+        // First add paths
+        this.addPaths();
+        
+        // Then add market stands (they should be placed first to avoid houses overlapping them)
+        this.addMarketBuildings();
+        
+        // Then add temple (large central building)
+        this.addTempleBuilding();
+        
+        // Then add blacksmith
+        this.addBlacksmithBuilding();
+        
+        // Finally add houses (they should be placed last to avoid overlapping with other buildings)
+        this.addHouseBuildings();
+        
+        if (window.Logger) {
+            Logger.info('All buildings added in order');
+            Logger.info(`Total occupied positions: ${this.occupiedPositions.length}`);
+        } else {
+            console.log('All buildings added in order');
+            console.log(`Total occupied positions: ${this.occupiedPositions.length}`);
+        }
+    }
+    
+    /**
+     * Add paths to the terrain
+     */
+    addPaths() {
+        if (window.PathBuilder) {
+            if (window.Logger) {
+                Logger.info('Adding paths with PathBuilder');
+            } else {
+                console.log('Adding paths with PathBuilder');
+            }
+            window.PathBuilder.addWhiterunPaths(this.mesh);
+        } else {
+            if (window.Logger) {
+                Logger.warn('PathBuilder not available, using fallback method');
+            } else {
+                console.warn('PathBuilder not available, using fallback method');
+            }
+            this.addCentralPath(); // Fallback to internal method
+        }
+    }
+    
+    /**
+     * Add market buildings to the terrain
+     */
+    addMarketBuildings() {
+        if (window.MarketBuilder) {
+            if (window.Logger) {
+                Logger.info('Adding market stands with MarketBuilder');
+            } else {
+                console.log('Adding market stands with MarketBuilder');
+            }
+            window.MarketBuilder.addMarketStands(this.mesh, -15, -5, 3);
+        } else {
+            if (window.Logger) {
+                Logger.warn('MarketBuilder not available, using fallback method');
+            } else {
+                console.warn('MarketBuilder not available, using fallback method');
+            }
+            this.addMarketStands(); // Fallback to internal method
+        }
+    }
+    
+    /**
+     * Add temple building to the terrain
+     */
+    addTempleBuilding() {
+        if (window.TempleBuilder) {
+            if (window.Logger) {
+                Logger.info('Adding temple with TempleBuilder');
+            } else {
+                console.log('Adding temple with TempleBuilder');
+            }
+            window.TempleBuilder.addTemple(this.mesh, 0, -35, 0);
+        } else {
+            if (window.Logger) {
+                Logger.warn('TempleBuilder not available, using fallback method');
+            } else {
+                console.warn('TempleBuilder not available, using fallback method');
+            }
+            this.addTemple(); // Fallback to internal method
+        }
+    }
+    
+    /**
+     * Add blacksmith building to the terrain
+     */
+    addBlacksmithBuilding() {
+        if (window.BlacksmithBuilder) {
+            if (window.Logger) {
+                Logger.info('Adding blacksmith with BlacksmithBuilder');
+            } else {
+                console.log('Adding blacksmith with BlacksmithBuilder');
+            }
+            window.BlacksmithBuilder.addBlacksmith(this.mesh, 25, 5, Math.PI / 4);
+        } else {
+            if (window.Logger) {
+                Logger.warn('BlacksmithBuilder not available, using fallback method');
+            } else {
+                console.warn('BlacksmithBuilder not available, using fallback method');
+            }
+            this.addBlacksmith(); // Fallback to internal method
+        }
+    }
+    
+    /**
+     * Add house buildings to the terrain
+     */
+    addHouseBuildings() {
+        // Extend HouseBuilder with collision detection
+        if (window.HouseBuilder) {
+            if (window.Logger) {
+                Logger.info('Adding houses with HouseBuilder');
+            } else {
+                console.log('Adding houses with HouseBuilder');
+            }
+            
+            // Override the addHouse method to include collision detection
+            const originalAddHouse = window.HouseBuilder.addHouse;
+            window.HouseBuilder.addHouse = (parent, x, z, scale, rotation) => {
+                // Calculate house occupation radius based on scale
+                const houseRadius = 4 * scale; // Base size is 4 units
+                
+                // Check if position is already occupied
+                if (this.isPositionOccupied(x, z, houseRadius)) {
+                    if (window.Logger) {
+                        Logger.debug(`Skipped house at occupied position ${x}, ${z}`);
+                    } else {
+                        console.log(`Skipped house at occupied position ${x}, ${z}`);
+                    }
+                    return null; // Skip this house
+                }
+                
+                // Add the house using the original method
+                const house = originalAddHouse(parent, x, z, scale, rotation);
+                
+                // Mark position as occupied
+                this.markPositionOccupied(x, z, houseRadius, 'house');
+                
+                if (window.Logger) {
+                    Logger.debug(`Added house at position ${x}, ${z} with radius ${houseRadius}`);
+                } else {
+                    console.log(`Added house at position ${x}, ${z} with radius ${houseRadius}`);
+                }
+                
+                return house;
+            };
+            
+            // Add houses with collision detection
+            window.HouseBuilder.addHousesInCircle(this.mesh, 0, 0, 25);
+            window.HouseBuilder.addInnerHouses(this.mesh, 0, 0, 3);
+        } else {
+            if (window.Logger) {
+                Logger.warn('HouseBuilder not available, using fallback method');
+            } else {
+                console.warn('HouseBuilder not available, using fallback method');
+            }
+            this.addHouses(); // Fallback to internal method
+        }
+    }
+    
+    /**
+     * Add Whiterun-inspired buildings to the terrain (legacy method, not used)
      */
     addWhiterunBuildings() {
         try {
