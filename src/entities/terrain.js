@@ -987,6 +987,11 @@ class Terrain extends Entity {
                         // Update object position
                         object.position.set(position.x, position.y, position.z);
                         
+                        // Update rotation if available
+                        if (position.rotationY !== undefined) {
+                            object.rotation.y = position.rotationY;
+                        }
+                        
                         // Update occupied positions
                         this.updateOccupiedPosition(objectType, originalX, originalZ, position.x, position.z);
                         

@@ -24,8 +24,12 @@ class DragDropManager {
         // Currently selected object
         this.selectedObject = null;
         this.originalPosition = new THREE.Vector3();
+        this.originalRotation = 0;
         this.dragOffset = new THREE.Vector3();
         this.dragPlane = new THREE.Plane();
+        
+        // Rotation settings
+        this.rotationStep = Math.PI / 12; // 15 degrees
         
         // Edit mode state
         this.editMode = false;
@@ -174,6 +178,7 @@ class DragDropManager {
                     Edit Mode Controls:<br>
                     <small>
                         - Click and drag objects to move them<br>
+                        - Left/Right Arrow keys to rotate selected object<br>
                         - Press E to exit edit mode<br>
                         - Press S to save layout<br>
                         - Objects cannot overlap
@@ -246,8 +251,9 @@ class DragDropManager {
                 // Store the selected object
                 this.selectedObject = object;
                 
-                // Store original position
+                // Store original position and rotation
                 this.originalPosition.copy(this.selectedObject.position);
+                this.originalRotation = this.selectedObject.rotation.y;
                 
                 // Calculate drag offset
                 const intersectionPoint = intersect.point;
@@ -370,6 +376,52 @@ class DragDropManager {
             event.preventDefault(); // Prevent browser save dialog
             this.saveLayout();
         }
+        
+        // Handle rotation with arrow keys when an object is selected
+        if (this.editMode && this.selectedObject) {
+            switch (event.key) {
+                case 'ArrowLeft':
+                    // Rotate counterclockwise
+                    this.selectedObject.rotation.y += this.rotationStep;
+                    this.updateSelectionHelper();
+                    
+                    if (window.Logger) {
+                        Logger.debug(`Rotated object counterclockwise: ${this.selectedObject.rotation.y.toFixed(2)} radians`);
+                    } else {
+                        console.log(`Rotated object counterclockwise: ${this.selectedObject.rotation.y.toFixed(2)} radians`);
+                    }
+                    break;
+                    
+                case 'ArrowRight':
+                    // Rotate clockwise
+                    this.selectedObject.rotation.y -= this.rotationStep;
+                    this.updateSelectionHelper();
+                    
+                    if (window.Logger) {
+                        Logger.debug(`Rotated object clockwise: ${this.selectedObject.rotation.y.toFixed(2)} radians`);
+                    } else {
+                        console.log(`Rotated object clockwise: ${this.selectedObject.rotation.y.toFixed(2)} radians`);
+                    }
+                    break;
+            }
+            
+            // Check for collisions after rotation
+            const hasCollision = this.checkCollisions();
+            
+            if (hasCollision) {
+                // Revert to original rotation if there's a collision
+                this.selectedObject.rotation.y = this.originalRotation;
+                
+                if (window.Logger) {
+                    Logger.debug(`Reverted object rotation due to collision`);
+                } else {
+                    console.log(`Reverted object rotation due to collision`);
+                }
+            } else {
+                // Save the new rotation
+                this.saveObjectPosition(this.selectedObject);
+            }
+        }
     }
     
     /**
@@ -391,6 +443,7 @@ class DragDropManager {
         // Update helper size and position
         this.selectionHelper.scale.set(size.x, size.y, size.z);
         this.selectionHelper.position.copy(this.selectedObject.position);
+        this.selectionHelper.rotation.copy(this.selectedObject.rotation);
         
         // Adjust helper color based on collision state
         const hasCollision = this.checkCollisions(true); // Just check, don't log
@@ -456,6 +509,7 @@ class DragDropManager {
             x: object.position.x,
             y: object.position.y,
             z: object.position.z,
+            rotationY: object.rotation.y,
             timestamp: Date.now()
         };
         
@@ -500,6 +554,11 @@ class DragDropManager {
                 
                 // Update object position
                 object.position.set(position.x, position.y, position.z);
+                
+                // Update rotation if available
+                if (position.rotationY !== undefined) {
+                    object.rotation.y = position.rotationY;
+                }
                 
                 if (window.Logger) {
                     Logger.debug(`Loaded position for ${objectType} ${objectId}`);
