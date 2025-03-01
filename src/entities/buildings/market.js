@@ -144,8 +144,7 @@ function addMarketItems(stand) {
         stand.add(fruit);
     }
     
-    // Add some bread loaves
-    const breadGeometry = new THREE.CapsuleGeometry(0.1, 0.3, 4, 8);
+    // Add some bread loaves using CylinderGeometry instead of CapsuleGeometry
     const breadMaterial = new THREE.MeshStandardMaterial({
         color: 0xD2691E, // Chocolate (bread-like color)
         roughness: 0.9,
@@ -154,15 +153,41 @@ function addMarketItems(stand) {
     
     // Add a few bread loaves
     for (let i = 0; i < 3; i++) {
-        const bread = new THREE.Mesh(breadGeometry, breadMaterial);
-        bread.rotation.z = Math.PI / 2; // Lay flat
-        bread.position.set(
+        // Create a group for each bread loaf
+        const breadGroup = new THREE.Group();
+        
+        // Main cylinder for the bread body
+        const breadBodyGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 8);
+        const breadBody = new THREE.Mesh(breadBodyGeometry, breadMaterial);
+        breadBody.rotation.z = Math.PI / 2; // Lay flat
+        breadGroup.add(breadBody);
+        
+        // Add spheres at the ends to round it
+        const endCapGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        
+        const endCap1 = new THREE.Mesh(endCapGeometry, breadMaterial);
+        endCap1.position.set(0.15, 0, 0);
+        breadGroup.add(endCap1);
+        
+        const endCap2 = new THREE.Mesh(endCapGeometry, breadMaterial);
+        endCap2.position.set(-0.15, 0, 0);
+        breadGroup.add(endCap2);
+        
+        // Position the bread group
+        breadGroup.position.set(
             -0.8 + (i * 0.2),
             1.1,
             0.5
         );
-        bread.castShadow = true;
-        stand.add(bread);
+        
+        // Add shadows
+        breadGroup.traverse(obj => {
+            if (obj.isMesh) {
+                obj.castShadow = true;
+            }
+        });
+        
+        stand.add(breadGroup);
     }
 }
 

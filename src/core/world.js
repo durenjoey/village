@@ -243,49 +243,26 @@ class World {
     }
     
     /**
-     * Update the day/night cycle based on the time system
+     * Set up fixed lighting (no day/night cycle)
      */
-    updateDayNightCycle() {
-        const timeSystem = this.getSystem('time');
-        if (!timeSystem) return;
+    setupFixedLighting() {
+        // Set permanent daytime lighting
         
-        // Get sun position factor (-1 to 1, where 1 is noon and -1 is midnight)
-        const sunFactor = timeSystem.getSunPositionFactor();
-        
-        // Update sun position
-        const sunAngle = (sunFactor * Math.PI / 2) + Math.PI / 2; // Convert to angle in radians
+        // Position sun at a fixed position (noon-like)
         const sunDistance = 100;
-        const sunHeight = Math.sin(sunAngle) * sunDistance;
-        const sunHorizontal = Math.cos(sunAngle) * sunDistance;
+        const sunHeight = 80; // High in the sky
+        const sunHorizontal = 50; // Slightly to the side
         
         this.sunLight.position.set(sunHorizontal, sunHeight, 0);
         
-        // Update sun intensity based on time of day
-        const sunIntensity = Math.max(0, sunFactor);
-        this.sunLight.intensity = sunIntensity;
+        // Set fixed sun intensity
+        this.sunLight.intensity = 1.5;
         
-        // Update ambient light intensity
-        this.ambientLight.intensity = 0.5 + (sunIntensity * 0.5); // Increased ambient light
+        // Set fixed ambient light intensity
+        this.ambientLight.intensity = 1.0;
         
-        // Update sky color
-        if (sunFactor > 0) {
-            // Daytime: blue sky
-            const skyColor = new THREE.Color(0x87ceeb);
-            this.scene.background = skyColor;
-        } else if (sunFactor > -0.2) {
-            // Sunset/sunrise: orange-ish
-            const t = (sunFactor + 0.2) / 0.2; // 0-1 for sunset/sunrise transition
-            const skyColor = new THREE.Color().lerpColors(
-                new THREE.Color(0xff7e50), // Sunset orange
-                new THREE.Color(0x87ceeb), // Daytime blue
-                t
-            );
-            this.scene.background = skyColor;
-        } else {
-            // Night: dark blue
-            const skyColor = new THREE.Color(0x0a1a2a);
-            this.scene.background = skyColor;
-        }
+        // Set fixed sky color (daytime blue)
+        this.scene.background = new THREE.Color(0x87ceeb);
     }
     
     /**
@@ -311,20 +288,30 @@ class World {
      * @param {number} time - Current time in milliseconds
      */
     update(time) {
-        if (!this.running) return;
+        if (!this.running) {
+            console.log("World is not running, update skipped");
+            return;
+        }
         
         // Calculate delta time in seconds
         const deltaTime = (time - this.lastTime) / 1000;
         this.lastTime = time;
         
+        // Debug: Log update call
+        console.log(`World update called, deltaTime: ${deltaTime.toFixed(4)}`);
+        
         // Process entity changes
         this.processEntityChanges();
         
-        // Update day/night cycle
-        this.updateDayNightCycle();
+        // Apply fixed lighting instead of day/night cycle
+        this.setupFixedLighting();
+        
+        // Debug: Log systems before update
+        console.log(`Updating ${Object.keys(this.systems).length} systems: ${Object.keys(this.systems).join(', ')}`);
         
         // Update all systems
         for (const type in this.systems) {
+            console.log(`Updating system: ${type}`);
             this.systems[type].update(this.entities, deltaTime);
         }
         

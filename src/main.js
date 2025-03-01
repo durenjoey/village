@@ -46,9 +46,7 @@ function init() {
 
 // Initialize systems
 function initSystems() {
-    // Add time system
-    const timeSystem = new TimeSystem();
-    world.addSystem(timeSystem);
+    // Time system removed
     
     // Add physics system
     const physicsSystem = new PhysicsSystem();
@@ -104,20 +102,7 @@ function addEventListeners() {
             toggleDebugMode();
         }
         
-        // Speed up time on '+' key press
-        if (event.key === '+' || event.key === '=') {
-            changeTimeSpeed(2);
-        }
-        
-        // Slow down time on '-' key press
-        if (event.key === '-' || event.key === '_') {
-            changeTimeSpeed(0.5);
-        }
-        
-        // Reset time speed on '0' key press
-        if (event.key === '0') {
-            resetTimeSpeed();
-        }
+        // Time-related keyboard controls removed
     });
     
     // Add info about controls
@@ -159,19 +144,13 @@ function resetTimeSpeed() {
 function updateInfoDisplay() {
     if (!infoElement) return;
     
-    const timeSystem = world.getSystem('time');
-    const timeSpeed = timeSystem ? timeSystem.timeSpeed : 1;
-    
     infoElement.innerHTML = `
         Simple Land Simulation<br>
         <small>
             Debug Mode: ${debugMode ? 'ON' : 'OFF'} (Press 'D' to toggle)<br>
-            Time Speed: ${timeSpeed.toFixed(1)}x (Press '+'/'-' to change, '0' to reset)<br>
             <br>
             Controls:<br>
             - D: Toggle debug mode<br>
-            - +/-: Change time speed<br>
-            - 0: Reset time speed<br>
             - L: Toggle log panel<br>
         </small>
     `;
