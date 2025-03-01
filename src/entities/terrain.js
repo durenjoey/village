@@ -27,6 +27,16 @@ class Terrain extends Entity {
         this.addComponent(new PhysicsComponent({ isStatic: true }));
         this.addComponent(new AppearanceComponent('terrain'));
         
+        // Add greenery component with mixed vegetation
+        this.addComponent(new GreeneryComponent({
+            type: 'mixed',
+            density: 0.9, // Increased density
+            customization: {
+                // Custom options can be set here
+                color: 0x228B22 // Forest green for better visibility
+            }
+        }));
+        
         if (window.Logger) {
             Logger.info('Terrain entity created with mesh:', this.mesh ? 'Yes' : 'No');
         } else {
@@ -84,6 +94,9 @@ class Terrain extends Entity {
         // Add dirt patches
         this.addDirtPatches();
         
+        // Add trees directly
+        this.addTrees();
+        
         // Add Whiterun-inspired buildings
         this.addWhiterunBuildings();
         
@@ -91,6 +104,89 @@ class Terrain extends Entity {
             Logger.info('Terrain mesh created with', this.mesh.children.length, 'children');
         } else {
             console.log('Terrain mesh created with', this.mesh.children.length, 'children');
+        }
+    }
+    
+    /**
+     * Add trees directly to the terrain
+     */
+    addTrees() {
+        if (window.Logger) {
+            Logger.info('Adding trees directly to terrain');
+        } else {
+            console.log('Adding trees directly to terrain');
+        }
+        
+        const size = this.size;
+        const treeCount = 50; // Add a significant number of trees
+        
+        // Create trunk material
+        const trunkMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8B4513, // Brown
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        
+        // Create leaves material
+        const leavesMaterial = new THREE.MeshStandardMaterial({
+            color: 0x228B22, // Forest green
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        
+        // Create trees
+        for (let i = 0; i < treeCount; i++) {
+            // Random position within the terrain bounds
+            const x = (Math.random() - 0.5) * size * 0.9;
+            const z = (Math.random() - 0.5) * size * 0.9;
+            
+            // Large size for visibility
+            const treeHeight = 10 + Math.random() * 5;
+            const trunkRadius = 0.5 + Math.random() * 0.5;
+            
+            // Create tree group
+            const tree = new THREE.Group();
+            
+            // Create trunk
+            const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius * 1.2, treeHeight, 8);
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = treeHeight / 2;
+            trunk.castShadow = true;
+            tree.add(trunk);
+            
+            // Create leaves
+            const leavesType = Math.random() > 0.5 ? 'pine' : 'deciduous';
+            
+            if (leavesType === 'pine') {
+                const leavesGeometry = new THREE.ConeGeometry(treeHeight * 0.4, treeHeight * 0.8, 8);
+                const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.position.y = treeHeight * 0.9;
+                leaves.castShadow = true;
+                tree.add(leaves);
+            } else {
+                const leavesGeometry = new THREE.SphereGeometry(treeHeight * 0.4, 8, 8);
+                const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.position.y = treeHeight * 0.9;
+                leaves.scale.y = 1.2; // Slightly elongated
+                leaves.castShadow = true;
+                tree.add(leaves);
+            }
+            
+            // Position tree
+            tree.position.set(x, 0, z);
+            
+            // Add to terrain mesh
+            this.mesh.add(tree);
+            
+            if (window.Logger && i === 0) {
+                Logger.info(`Added tree at position ${x}, 0, ${z} with height ${treeHeight}`);
+            }
+        }
+        
+        if (window.Logger) {
+            Logger.info(`Added ${treeCount} trees to terrain`);
+        } else {
+            console.log(`Added ${treeCount} trees to terrain`);
         }
     }
     
