@@ -206,7 +206,21 @@ function addMarketStands(parent, centerX, centerZ, count) {
         const x = centerX + Math.cos(angle) * distance;
         const z = centerZ + Math.sin(angle) * distance;
         
-        addMarketStand(parent, x, z, Math.PI / 2 + angle);
+        // Add market stand
+        const stand = addMarketStand(parent, x, z, Math.PI / 2 + angle);
+        
+        // Mark position as occupied in terrain if possible
+        // This helps with collision detection for trees
+        if (parent.parent && parent.parent.markPositionOccupied) {
+            const standRadius = 5; // Increased radius for better collision detection
+            parent.parent.markPositionOccupied(x, z, standRadius, 'market_stand');
+            
+            if (window.Logger) {
+                Logger.debug(`Marked market stand position as occupied: ${x}, ${z}`);
+            } else {
+                console.log(`Marked market stand position as occupied: ${x}, ${z}`);
+            }
+        }
     }
 }
 

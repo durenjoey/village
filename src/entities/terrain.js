@@ -97,11 +97,11 @@ class Terrain extends Entity {
         // Add dirt patches
         this.addDirtPatches();
         
-        // Add trees directly
-        this.addTrees();
-        
-        // Add Whiterun-inspired buildings
+        // Add Whiterun-inspired buildings first
         this.addWhiterunBuildings();
+        
+        // Add trees after buildings to ensure proper collision detection
+        this.addTrees();
         
         if (window.Logger) {
             Logger.info('Terrain mesh created with', this.mesh.children.length, 'children');
@@ -646,7 +646,7 @@ class Terrain extends Entity {
         // Position and size
         const x = -15;
         const z = -5;
-        const standSize = 3; // Size of the market stand
+        const standSize = 5; // Increased size of the market stand for better collision detection
         
         // Check if position is already occupied
         if (this.isPositionOccupied(x, z, standSize)) {
