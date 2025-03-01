@@ -10,11 +10,22 @@
  * @param {number} z - Z position
  * @param {number} scale - House scale
  * @param {number} rotation - House rotation in radians
+ * @param {number} [angle] - Optional angle for houses in a circular pattern
  * @returns {THREE.Group} The created house group
  */
-function addHouse(parent, x, z, scale, rotation) {
-    // Generate a unique ID for this house
-    const houseId = window.LabelUtils ? window.LabelUtils.generateId('house') : `H${Math.floor(Math.random() * 1000)}`;
+function addHouse(parent, x, z, scale, rotation, angle) {
+    // Generate a unique ID for this house based on its position
+    const houseId = window.LabelUtils ? window.LabelUtils.generateId('house', x, z, angle) : `H${Math.floor(Math.random() * 1000)}`;
+    
+    // Skip houses H5 and H10 as requested
+    if (houseId === 'H5' || houseId === 'H10') {
+        if (window.Logger) {
+            Logger.info(`Skipping house ${houseId} at position ${x}, ${z}`);
+        } else {
+            console.log(`Skipping house ${houseId} at position ${x}, ${z}`);
+        }
+        return null;
+    }
     
     // Create house group
     const house = new THREE.Group();
@@ -148,7 +159,13 @@ function addHousesInCircle(parent, centerX, centerZ, radius) {
         const scale = 0.8 + Math.random() * 0.4;
         const rotation = angle + Math.PI + (Math.random() * 0.2 - 0.1);
         
-        addHouse(parent, x, z, scale, rotation);
+        // Add house with angle parameter for consistent ID generation
+        const house = addHouse(parent, x, z, scale, rotation, angle);
+        
+        // Log if house was skipped (H5)
+        if (!house && window.Logger) {
+            Logger.info(`House at angle ${angle.toFixed(2)} was skipped`);
+        }
     }
 }
 
@@ -172,14 +189,25 @@ function addInnerHouses(parent, centerX, centerZ, count) {
         
         // Change the color of the first inner house to bright red
         if (i === 0) {
-            addHouseWithCustomColor(parent, x, z, scale, rotation, 0xff0000); // Bright red
+            // Pass angle for consistent ID generation
+            const house = addHouseWithCustomColor(parent, x, z, scale, rotation, 0xff0000, angle); // Bright red
+            
             if (window.Logger) {
-                Logger.info(`Changed inner house ${i} to red at position ${x}, ${z}`);
+                if (house) {
+                    Logger.info(`Changed inner house ${i} to red at position ${x}, ${z}`);
+                } else {
+                    Logger.info(`Skipped red inner house at position ${x}, ${z}`);
+                }
             } else {
-                console.log(`Changed inner house ${i} to red at position ${x}, ${z}`);
+                if (house) {
+                    console.log(`Changed inner house ${i} to red at position ${x}, ${z}`);
+                } else {
+                    console.log(`Skipped red inner house at position ${x}, ${z}`);
+                }
             }
         } else {
-            addHouse(parent, x, z, scale, rotation);
+            // Pass angle for consistent ID generation
+            addHouse(parent, x, z, scale, rotation, angle);
         }
     }
 }
@@ -192,11 +220,22 @@ function addInnerHouses(parent, centerX, centerZ, count) {
  * @param {number} scale - House scale
  * @param {number} rotation - House rotation in radians
  * @param {number} color - House color in hex format
+ * @param {number} [angle] - Optional angle for houses in a circular pattern
  * @returns {THREE.Group} The created house group
  */
-function addHouseWithCustomColor(parent, x, z, scale, rotation, color) {
-    // Generate a unique ID for this house
-    const houseId = window.LabelUtils ? window.LabelUtils.generateId('house') : `H${Math.floor(Math.random() * 1000)}`;
+function addHouseWithCustomColor(parent, x, z, scale, rotation, color, angle) {
+    // Generate a unique ID for this house based on its position
+    const houseId = window.LabelUtils ? window.LabelUtils.generateId('house', x, z, angle) : `H${Math.floor(Math.random() * 1000)}`;
+    
+    // Skip houses H5 and H10 as requested
+    if (houseId === 'H5' || houseId === 'H10') {
+        if (window.Logger) {
+            Logger.info(`Skipping custom colored house ${houseId} at position ${x}, ${z}`);
+        } else {
+            console.log(`Skipping custom colored house ${houseId} at position ${x}, ${z}`);
+        }
+        return null;
+    }
     
     // Create house group
     const house = new THREE.Group();

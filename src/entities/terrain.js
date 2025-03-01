@@ -192,8 +192,18 @@ class Terrain extends Entity {
                 continue; // Skip this position and try again
             }
             
-            // Generate a unique ID for this tree
-            const treeId = window.LabelUtils ? window.LabelUtils.generateId('tree') : `T${Math.floor(Math.random() * 1000)}`;
+            // Generate a unique ID for this tree based on its position
+            const treeId = window.LabelUtils ? window.LabelUtils.generateId('tree', x, z) : `T${Math.floor(Math.random() * 1000)}`;
+            
+            // Skip tree T5 if it exists (similar to house H5)
+            if (treeId === 'T5') {
+                if (window.Logger) {
+                    Logger.info(`Skipping tree ${treeId} at position ${x}, ${z}`);
+                } else {
+                    console.log(`Skipping tree ${treeId} at position ${x}, ${z}`);
+                }
+                continue;
+            }
             
             // Create tree group
             const tree = new THREE.Group();

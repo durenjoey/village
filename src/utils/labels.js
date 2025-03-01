@@ -2,26 +2,16 @@
  * Utility functions for creating and managing labels in the 3D scene
  */
 
-// Counter objects to track IDs for different entity types
-const idCounters = {
-    building: 0,
-    house: 0,
-    tree: 0,
-    market: 0,
-    blacksmith: 0,
-    temple: 0
-};
-
 /**
- * Generate a unique ID for an entity type
+ * Generate a unique ID for an entity based on its position and type
  * @param {string} type - The type of entity (building, house, tree, etc.)
+ * @param {number} x - X coordinate
+ * @param {number} z - Z coordinate
+ * @param {number} [angle] - Optional angle for circular arrangements
  * @returns {string} A unique ID with prefix (e.g., H1, T2, B3)
  */
-function generateId(type) {
-    // Increment the counter for this type
-    idCounters[type] = (idCounters[type] || 0) + 1;
-    
-    // Generate ID with prefix
+function generateAbsoluteId(type, x, z, angle) {
+    // Generate prefix based on type
     let prefix = '';
     switch (type) {
         case 'house':
@@ -43,7 +33,26 @@ function generateId(type) {
             prefix = 'B'; // Default to Building
     }
     
-    return `${prefix}${idCounters[type]}`;
+    // Generate a number based on position
+    let number;
+    
+    if (angle !== undefined) {
+        // For objects arranged in a circle (like houses)
+        // Convert angle to a number between 1-12 (like a clock)
+        const clockPosition = Math.floor((angle / (Math.PI * 2)) * 12) + 1;
+        number = clockPosition;
+    } else {
+        // For randomly placed objects (like trees)
+        // Use a grid-based system - divide the world into a 10x10 grid
+        const gridSize = 10;
+        const gridX = Math.floor((x + 50) / gridSize); // Assuming world is -50 to 50
+        const gridZ = Math.floor((z + 50) / gridSize);
+        
+        // Create a unique number from the grid coordinates
+        number = gridX * 100 + gridZ;
+    }
+    
+    return `${prefix}${number}`;
 }
 
 /**
@@ -121,7 +130,7 @@ function addLabelToObject(object, text, yOffset = 2, scale = 1) {
 
 // Export functions
 window.LabelUtils = {
-    generateId,
+    generateId: generateAbsoluteId, // Use the new absolute ID function
     createLabel,
     addLabelToObject
 };
