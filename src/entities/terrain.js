@@ -140,9 +140,9 @@ class Terrain extends Entity {
             const x = (Math.random() - 0.5) * size * 0.9;
             const z = (Math.random() - 0.5) * size * 0.9;
             
-            // Large size for visibility
-            const treeHeight = 10 + Math.random() * 5;
-            const trunkRadius = 0.5 + Math.random() * 0.5;
+            // Smaller size for better proportion
+            const treeHeight = 3 + Math.random() * 2;
+            const trunkRadius = 0.2 + Math.random() * 0.2;
             
             // Create tree group
             const tree = new THREE.Group();
