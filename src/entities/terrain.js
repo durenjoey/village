@@ -19,6 +19,9 @@ class Terrain extends Entity {
         this.resolution = options.resolution || 100;
         this.maxHeight = options.maxHeight || 3;
         
+        // Track occupied positions to prevent overlaps
+        this.occupiedPositions = [];
+        
         // Create terrain mesh
         this.createMesh();
         
@@ -108,6 +111,39 @@ class Terrain extends Entity {
     }
     
     /**
+     * Check if a position is occupied
+     * @param {number} x - X coordinate
+     * @param {number} z - Z coordinate
+     * @param {number} radius - Radius to check for occupation
+     * @returns {boolean} True if position is occupied, false otherwise
+     */
+    isPositionOccupied(x, z, radius) {
+        for (const pos of this.occupiedPositions) {
+            const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(z - pos.z, 2));
+            if (distance < (radius + pos.radius)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Mark a position as occupied
+     * @param {number} x - X coordinate
+     * @param {number} z - Z coordinate
+     * @param {number} radius - Radius of occupation
+     * @param {string} type - Type of object occupying the position
+     */
+    markPositionOccupied(x, z, radius, type) {
+        this.occupiedPositions.push({
+            x: x,
+            z: z,
+            radius: radius,
+            type: type
+        });
+    }
+    
+    /**
      * Add trees directly to the terrain
      */
     addTrees() {
@@ -135,7 +171,13 @@ class Terrain extends Entity {
         });
         
         // Create trees
-        for (let i = 0; i < treeCount; i++) {
+        let treesAdded = 0;
+        let attempts = 0;
+        const maxAttempts = 200; // Prevent infinite loops
+        
+        while (treesAdded < treeCount && attempts < maxAttempts) {
+            attempts++;
+            
             // Random position within the terrain bounds
             const x = (Math.random() - 0.5) * size * 0.9;
             const z = (Math.random() - 0.5) * size * 0.9;
@@ -143,6 +185,12 @@ class Terrain extends Entity {
             // Smaller size for better proportion
             const treeHeight = 3 + Math.random() * 2;
             const trunkRadius = 0.2 + Math.random() * 0.2;
+            
+            // Check if position is already occupied
+            const occupationRadius = treeHeight * 0.4; // Use the tree's width as occupation radius
+            if (this.isPositionOccupied(x, z, occupationRadius)) {
+                continue; // Skip this position and try again
+            }
             
             // Create tree group
             const tree = new THREE.Group();
@@ -178,15 +226,20 @@ class Terrain extends Entity {
             // Add to terrain mesh
             this.mesh.add(tree);
             
-            if (window.Logger && i === 0) {
+            // Mark position as occupied
+            this.markPositionOccupied(x, z, occupationRadius, 'tree');
+            
+            treesAdded++;
+            
+            if (window.Logger && treesAdded === 1) {
                 Logger.info(`Added tree at position ${x}, 0, ${z} with height ${treeHeight}`);
             }
         }
         
         if (window.Logger) {
-            Logger.info(`Added ${treeCount} trees to terrain`);
+            Logger.info(`Added ${treesAdded} trees to terrain after ${attempts} attempts`);
         } else {
-            console.log(`Added ${treeCount} trees to terrain`);
+            console.log(`Added ${treesAdded} trees to terrain after ${attempts} attempts`);
         }
     }
     
@@ -320,12 +373,38 @@ class Terrain extends Entity {
                 this.addCentralPath(); // Fallback to internal method
             }
             
+            // Extend HouseBuilder with collision detection
             if (window.HouseBuilder) {
                 if (window.Logger) {
                     Logger.info('HouseBuilder is available');
                 } else {
                     console.log('HouseBuilder is available');
                 }
+                
+                // Override the addHouse method to include collision detection
+                const originalAddHouse = window.HouseBuilder.addHouse;
+                window.HouseBuilder.addHouse = (parent, x, z, scale, rotation) => {
+                    // Calculate house occupation radius based on scale
+                    const houseRadius = 4 * scale; // Base size is 4 units
+                    
+                    // Check if position is already occupied
+                    if (this.isPositionOccupied(x, z, houseRadius)) {
+                        if (window.Logger) {
+                            Logger.debug(`Skipped house at occupied position ${x}, ${z}`);
+                        }
+                        return null; // Skip this house
+                    }
+                    
+                    // Add the house using the original method
+                    const house = originalAddHouse(parent, x, z, scale, rotation);
+                    
+                    // Mark position as occupied
+                    this.markPositionOccupied(x, z, houseRadius, 'house');
+                    
+                    return house;
+                };
+                
+                // Add houses with collision detection
                 window.HouseBuilder.addHousesInCircle(this.mesh, 0, 0, 25);
                 window.HouseBuilder.addInnerHouses(this.mesh, 0, 0, 3);
             } else {
@@ -455,6 +534,18 @@ class Terrain extends Entity {
         }
         
         // Add a simple house in the center for testing
+        const x = 10;
+        const z = 10;
+        const houseRadius = 4; // Size of house for collision detection
+        
+        // Check if position is already occupied
+        if (this.isPositionOccupied(x, z, houseRadius)) {
+            if (window.Logger) {
+                Logger.debug(`Skipped house at occupied position ${x}, ${z}`);
+            }
+            return;
+        }
+        
         const house = new THREE.Group();
         
         // House base (walls)
@@ -484,10 +575,13 @@ class Terrain extends Entity {
         house.add(roof);
         
         // Position house
-        house.position.set(10, 0, 10);
+        house.position.set(x, 0, z);
         
         // Add to terrain mesh
         this.mesh.add(house);
+        
+        // Mark position as occupied
+        this.markPositionOccupied(x, z, houseRadius, 'house');
     }
     
     /**
@@ -498,6 +592,19 @@ class Terrain extends Entity {
             Logger.warn('Using fallback method for blacksmith');
         } else {
             console.log('Using fallback method for blacksmith');
+        }
+        
+        // Position and size
+        const x = 25;
+        const z = 5;
+        const buildingSize = 5; // Size of the blacksmith building
+        
+        // Check if position is already occupied
+        if (this.isPositionOccupied(x, z, buildingSize)) {
+            if (window.Logger) {
+                Logger.debug(`Skipped blacksmith at occupied position ${x}, ${z}`);
+            }
+            return;
         }
         
         // Add a simple blacksmith shop for testing
@@ -517,10 +624,13 @@ class Terrain extends Entity {
         blacksmith.add(building);
         
         // Position blacksmith
-        blacksmith.position.set(25, 0, 5);
+        blacksmith.position.set(x, 0, z);
         
         // Add to terrain mesh
         this.mesh.add(blacksmith);
+        
+        // Mark position as occupied
+        this.markPositionOccupied(x, z, buildingSize, 'blacksmith');
     }
     
     /**
@@ -531,6 +641,19 @@ class Terrain extends Entity {
             Logger.warn('Using fallback method for market stands');
         } else {
             console.log('Using fallback method for market stands');
+        }
+        
+        // Position and size
+        const x = -15;
+        const z = -5;
+        const standSize = 3; // Size of the market stand
+        
+        // Check if position is already occupied
+        if (this.isPositionOccupied(x, z, standSize)) {
+            if (window.Logger) {
+                Logger.debug(`Skipped market stand at occupied position ${x}, ${z}`);
+            }
+            return;
         }
         
         // Add a simple market stand for testing
@@ -550,10 +673,13 @@ class Terrain extends Entity {
         stand.add(base);
         
         // Position stand
-        stand.position.set(-15, 0, -5);
+        stand.position.set(x, 0, z);
         
         // Add to terrain mesh
         this.mesh.add(stand);
+        
+        // Mark position as occupied
+        this.markPositionOccupied(x, z, standSize, 'market_stand');
     }
     
     /**
@@ -564,6 +690,19 @@ class Terrain extends Entity {
             Logger.warn('Using fallback method for temple');
         } else {
             console.log('Using fallback method for temple');
+        }
+        
+        // Position and size
+        const x = 0;
+        const z = -35;
+        const templeSize = 12; // Size of the temple
+        
+        // Check if position is already occupied
+        if (this.isPositionOccupied(x, z, templeSize)) {
+            if (window.Logger) {
+                Logger.debug(`Skipped temple at occupied position ${x}, ${z}`);
+            }
+            return;
         }
         
         // Add a simple temple for testing
@@ -583,9 +722,12 @@ class Terrain extends Entity {
         temple.add(base);
         
         // Position temple
-        temple.position.set(0, 0, -35);
+        temple.position.set(x, 0, z);
         
         // Add to terrain mesh
         this.mesh.add(temple);
+        
+        // Mark position as occupied
+        this.markPositionOccupied(x, z, templeSize, 'temple');
     }
 }

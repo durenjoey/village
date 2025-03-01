@@ -121,6 +121,80 @@ class GreeneryComponent extends Component {
     }
     
     /**
+     * Check if a position is occupied
+     * @param {number} x - X coordinate
+     * @param {number} z - Z coordinate
+     * @param {number} radius - Radius to check for occupation
+     * @returns {boolean} True if position is occupied, false otherwise
+     */
+    isPositionOccupied(x, z, radius) {
+        // First check if the entity has a world reference and the world has a terrain entity
+        if (this.entity && this.entity.world) {
+            // Find the terrain entity
+            const terrainEntities = this.entity.world.entities.filter(e => e.type === 'terrain');
+            if (terrainEntities.length > 0) {
+                const terrain = terrainEntities[0];
+                // Check if terrain has occupiedPositions
+                if (terrain.occupiedPositions) {
+                    for (const pos of terrain.occupiedPositions) {
+                        const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(z - pos.z, 2));
+                        if (distance < (radius + pos.radius)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If we can't access the terrain's occupiedPositions, check our own local tracking
+        if (!this._localOccupiedPositions) {
+            this._localOccupiedPositions = [];
+        }
+        
+        for (const pos of this._localOccupiedPositions) {
+            const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(z - pos.z, 2));
+            if (distance < (radius + pos.radius)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Mark a position as occupied
+     * @param {number} x - X coordinate
+     * @param {number} z - Z coordinate
+     * @param {number} radius - Radius of occupation
+     * @param {string} type - Type of object occupying the position
+     */
+    markPositionOccupied(x, z, radius, type) {
+        // First try to mark in terrain's occupiedPositions
+        if (this.entity && this.entity.world) {
+            const terrainEntities = this.entity.world.entities.filter(e => e.type === 'terrain');
+            if (terrainEntities.length > 0) {
+                const terrain = terrainEntities[0];
+                if (terrain.occupiedPositions && typeof terrain.markPositionOccupied === 'function') {
+                    terrain.markPositionOccupied(x, z, radius, type);
+                    return;
+                }
+            }
+        }
+        
+        // If we can't access the terrain's occupiedPositions, use our own local tracking
+        if (!this._localOccupiedPositions) {
+            this._localOccupiedPositions = [];
+        }
+        
+        this._localOccupiedPositions.push({
+            x: x,
+            z: z,
+            radius: radius,
+            type: type
+        });
+    }
+    
+    /**
      * Generate trees
      * @param {THREE.Object3D} parentMesh - The parent mesh to add trees to
      */
@@ -147,7 +221,13 @@ class GreeneryComponent extends Component {
         });
         
         // Create trees
-        for (let i = 0; i < treeCount; i++) {
+        let treesAdded = 0;
+        let attempts = 0;
+        const maxAttempts = 200; // Prevent infinite loops
+        
+        while (treesAdded < treeCount && attempts < maxAttempts) {
+            attempts++;
+            
             // Random position within the terrain bounds
             const x = (Math.random() - 0.5) * size * 0.9;
             const z = (Math.random() - 0.5) * size * 0.9;
@@ -155,6 +235,12 @@ class GreeneryComponent extends Component {
             // Random size for variety (increased size)
             const treeHeight = 5 + Math.random() * 5; // Taller trees
             const trunkRadius = 0.3 + Math.random() * 0.4; // Thicker trunks
+            
+            // Check if position is already occupied
+            const occupationRadius = treeHeight * 0.3; // Use the tree's width as occupation radius
+            if (this.isPositionOccupied(x, z, occupationRadius)) {
+                continue; // Skip this position and try again
+            }
             
             // Create tree group
             const tree = new THREE.Group();
@@ -189,6 +275,15 @@ class GreeneryComponent extends Component {
             
             // Add to mesh group
             this.meshGroup.add(tree);
+            
+            // Mark position as occupied
+            this.markPositionOccupied(x, z, occupationRadius, 'tree');
+            
+            treesAdded++;
+        }
+        
+        if (window.Logger) {
+            Logger.info(`Added ${treesAdded} trees after ${attempts} attempts`);
         }
     }
     
@@ -212,13 +307,25 @@ class GreeneryComponent extends Component {
         });
         
         // Create bushes
-        for (let i = 0; i < bushCount; i++) {
+        let bushesAdded = 0;
+        let attempts = 0;
+        const maxAttempts = 200; // Prevent infinite loops
+        
+        while (bushesAdded < bushCount && attempts < maxAttempts) {
+            attempts++;
+            
             // Random position within the terrain bounds
             const x = (Math.random() - 0.5) * size * 0.9;
             const z = (Math.random() - 0.5) * size * 0.9;
             
             // Random size for variety
             const bushSize = 0.5 + Math.random() * 1;
+            
+            // Check if position is already occupied
+            const occupationRadius = bushSize * 1.2; // Use the bush's width as occupation radius
+            if (this.isPositionOccupied(x, z, occupationRadius)) {
+                continue; // Skip this position and try again
+            }
             
             // Create bush group
             const bush = new THREE.Group();
@@ -254,6 +361,15 @@ class GreeneryComponent extends Component {
             
             // Add to mesh group
             this.meshGroup.add(bush);
+            
+            // Mark position as occupied
+            this.markPositionOccupied(x, z, occupationRadius, 'bush');
+            
+            bushesAdded++;
+        }
+        
+        if (window.Logger) {
+            Logger.info(`Added ${bushesAdded} bushes after ${attempts} attempts`);
         }
     }
     
@@ -277,7 +393,13 @@ class GreeneryComponent extends Component {
         });
         
         // Create flowers
-        for (let i = 0; i < flowerCount; i++) {
+        let flowersAdded = 0;
+        let attempts = 0;
+        const maxAttempts = 300; // More attempts for flowers since they're smaller
+        
+        while (flowersAdded < flowerCount && attempts < maxAttempts) {
+            attempts++;
+            
             // Random position within the terrain bounds
             const x = (Math.random() - 0.5) * size * 0.9;
             const z = (Math.random() - 0.5) * size * 0.9;
@@ -285,6 +407,13 @@ class GreeneryComponent extends Component {
             // Random size for variety
             const stemHeight = 0.3 + Math.random() * 0.5;
             const flowerSize = 0.1 + Math.random() * 0.2;
+            
+            // Check if position is already occupied
+            // Flowers can be closer to other objects since they're small
+            const occupationRadius = flowerSize * 0.8;
+            if (this.isPositionOccupied(x, z, occupationRadius)) {
+                continue; // Skip this position and try again
+            }
             
             // Create flower group
             const flower = new THREE.Group();
@@ -332,6 +461,15 @@ class GreeneryComponent extends Component {
             
             // Add to mesh group
             this.meshGroup.add(flower);
+            
+            // Mark position as occupied
+            this.markPositionOccupied(x, z, occupationRadius, 'flower');
+            
+            flowersAdded++;
+        }
+        
+        if (window.Logger) {
+            Logger.info(`Added ${flowersAdded} flowers after ${attempts} attempts`);
         }
     }
     
