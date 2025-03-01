@@ -192,8 +192,12 @@ class Terrain extends Entity {
                 continue; // Skip this position and try again
             }
             
+            // Generate a unique ID for this tree
+            const treeId = window.LabelUtils ? window.LabelUtils.generateId('tree') : `T${Math.floor(Math.random() * 1000)}`;
+            
             // Create tree group
             const tree = new THREE.Group();
+            tree.userData = { id: treeId, type: 'tree' };
             
             // Create trunk
             const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius * 1.2, treeHeight, 8);
@@ -228,6 +232,17 @@ class Terrain extends Entity {
             
             // Mark position as occupied
             this.markPositionOccupied(x, z, occupationRadius, 'tree');
+            
+            // Add label to tree if LabelUtils is available
+            if (window.LabelUtils) {
+                window.LabelUtils.addLabelToObject(tree, treeId, treeHeight + 1, 0.3);
+                
+                if (window.Logger) {
+                    Logger.debug(`Added tree ${treeId} at position ${x}, ${z}`);
+                } else {
+                    console.log(`Added tree ${treeId} at position ${x}, ${z}`);
+                }
+            }
             
             treesAdded++;
             
@@ -431,7 +446,19 @@ class Terrain extends Entity {
             } else {
                 console.log('Adding temple with TempleBuilder');
             }
+            
+            // Add temple
             window.TempleBuilder.addTemple(this.mesh, 0, -35, 0);
+            
+            // Mark a larger area in front of the temple as occupied to prevent houses from being placed there
+            // This creates a clear path to the temple entrance
+            this.markPositionOccupied(0, -20, 10, 'temple_entrance');
+            
+            if (window.Logger) {
+                Logger.info('Marked temple entrance area as occupied');
+            } else {
+                console.log('Marked temple entrance area as occupied');
+            }
         } else {
             if (window.Logger) {
                 Logger.warn('TempleBuilder not available, using fallback method');
@@ -439,6 +466,9 @@ class Terrain extends Entity {
                 console.warn('TempleBuilder not available, using fallback method');
             }
             this.addTemple(); // Fallback to internal method
+            
+            // Mark a larger area in front of the temple as occupied
+            this.markPositionOccupied(0, -20, 10, 'temple_entrance');
         }
     }
     

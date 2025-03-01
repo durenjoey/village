@@ -13,8 +13,12 @@
  * @returns {THREE.Group} The created house group
  */
 function addHouse(parent, x, z, scale, rotation) {
+    // Generate a unique ID for this house
+    const houseId = window.LabelUtils ? window.LabelUtils.generateId('house') : `H${Math.floor(Math.random() * 1000)}`;
+    
     // Create house group
     const house = new THREE.Group();
+    house.userData = { id: houseId, type: 'house' };
     
     // House base (walls)
     const baseGeometry = new THREE.BoxGeometry(4, 2, 3);
@@ -108,6 +112,17 @@ function addHouse(parent, x, z, scale, rotation) {
     // Add to parent group
     parent.add(house);
     
+    // Add label to house if LabelUtils is available
+    if (window.LabelUtils) {
+        window.LabelUtils.addLabelToObject(house, houseId, 4 * scale, 0.5 * scale);
+        
+        if (window.Logger) {
+            Logger.debug(`Added house ${houseId} at position ${x}, ${z}`);
+        } else {
+            console.log(`Added house ${houseId} at position ${x}, ${z}`);
+        }
+    }
+    
     return house;
 }
 
@@ -155,13 +170,148 @@ function addInnerHouses(parent, centerX, centerZ, count) {
         const scale = 0.7 + Math.random() * 0.3;
         const rotation = angle + Math.PI + (Math.random() * 0.4 - 0.2);
         
-        addHouse(parent, x, z, scale, rotation);
+        // Change the color of the first inner house to bright red
+        if (i === 0) {
+            addHouseWithCustomColor(parent, x, z, scale, rotation, 0xff0000); // Bright red
+            if (window.Logger) {
+                Logger.info(`Changed inner house ${i} to red at position ${x}, ${z}`);
+            } else {
+                console.log(`Changed inner house ${i} to red at position ${x}, ${z}`);
+            }
+        } else {
+            addHouse(parent, x, z, scale, rotation);
+        }
     }
+}
+
+/**
+ * Add a house with a custom color
+ * @param {THREE.Group} parent - The parent group to add the house to
+ * @param {number} x - X position
+ * @param {number} z - Z position
+ * @param {number} scale - House scale
+ * @param {number} rotation - House rotation in radians
+ * @param {number} color - House color in hex format
+ * @returns {THREE.Group} The created house group
+ */
+function addHouseWithCustomColor(parent, x, z, scale, rotation, color) {
+    // Generate a unique ID for this house
+    const houseId = window.LabelUtils ? window.LabelUtils.generateId('house') : `H${Math.floor(Math.random() * 1000)}`;
+    
+    // Create house group
+    const house = new THREE.Group();
+    house.userData = { id: houseId, type: 'house' };
+    
+    // House base (walls) with custom color
+    const baseGeometry = new THREE.BoxGeometry(4, 2, 3);
+    const baseMaterial = new THREE.MeshStandardMaterial({
+        color: color, // Custom color
+        roughness: 0.8,
+        metalness: 0.2
+    });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.y = 1; // Half height
+    base.castShadow = true;
+    base.receiveShadow = true;
+    house.add(base);
+    
+    // Roof (pyramid)
+    const roofGeometry = new THREE.ConeGeometry(3, 2, 4);
+    const roofMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b4513, // Brown
+        roughness: 0.9,
+        metalness: 0.1
+    });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = 3; // Above walls
+    roof.rotation.y = Math.PI / 4; // Rotate 45 degrees
+    roof.castShadow = true;
+    house.add(roof);
+    
+    // Door
+    const doorGeometry = new THREE.PlaneGeometry(0.8, 1.5);
+    const doorMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4d2600, // Dark brown
+        roughness: 0.9,
+        metalness: 0.1,
+        side: THREE.DoubleSide
+    });
+    const door = new THREE.Mesh(doorGeometry, doorMaterial);
+    door.position.set(0, 0.75, 1.51); // Front of house, slightly above ground
+    door.castShadow = true;
+    house.add(door);
+    
+    // Windows
+    const windowGeometry = new THREE.PlaneGeometry(0.7, 0.7);
+    const windowMaterial = new THREE.MeshStandardMaterial({
+        color: 0xadd8e6, // Light blue
+        roughness: 0.3,
+        metalness: 0.5,
+        side: THREE.DoubleSide
+    });
+    
+    // Front windows
+    const frontWindow1 = new THREE.Mesh(windowGeometry, windowMaterial);
+    frontWindow1.position.set(-1, 1.2, 1.51); // Left side of front
+    frontWindow1.castShadow = true;
+    house.add(frontWindow1);
+    
+    const frontWindow2 = new THREE.Mesh(windowGeometry, windowMaterial);
+    frontWindow2.position.set(1, 1.2, 1.51); // Right side of front
+    frontWindow2.castShadow = true;
+    house.add(frontWindow2);
+    
+    // Side windows
+    const sideWindow1 = new THREE.Mesh(windowGeometry, windowMaterial);
+    sideWindow1.position.set(2.01, 1.2, 0); // Right side
+    sideWindow1.rotation.y = Math.PI / 2; // Rotate to face outward
+    sideWindow1.castShadow = true;
+    house.add(sideWindow1);
+    
+    const sideWindow2 = new THREE.Mesh(windowGeometry, windowMaterial);
+    sideWindow2.position.set(-2.01, 1.2, 0); // Left side
+    sideWindow2.rotation.y = Math.PI / 2; // Rotate to face outward
+    sideWindow2.castShadow = true;
+    house.add(sideWindow2);
+    
+    // Chimney
+    const chimneyGeometry = new THREE.BoxGeometry(0.6, 1.5, 0.6);
+    const chimneyMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b0000, // Dark red
+        roughness: 0.9,
+        metalness: 0.1
+    });
+    const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+    chimney.position.set(1, 3.5, -0.5); // Top right of roof
+    chimney.castShadow = true;
+    house.add(chimney);
+    
+    // Position and scale house
+    house.position.set(x, 0, z);
+    house.rotation.y = rotation;
+    house.scale.set(scale, scale, scale);
+    
+    // Add to parent group
+    parent.add(house);
+    
+    // Add label to house if LabelUtils is available
+    if (window.LabelUtils) {
+        window.LabelUtils.addLabelToObject(house, houseId, 4 * scale, 0.5 * scale);
+        
+        if (window.Logger) {
+            Logger.debug(`Added custom colored house ${houseId} at position ${x}, ${z}`);
+        } else {
+            console.log(`Added custom colored house ${houseId} at position ${x}, ${z}`);
+        }
+    }
+    
+    return house;
 }
 
 // Export functions
 window.HouseBuilder = {
     addHouse,
     addHousesInCircle,
-    addInnerHouses
+    addInnerHouses,
+    addHouseWithCustomColor
 };
