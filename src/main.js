@@ -7,6 +7,7 @@
 let world;
 let infoElement;
 let debugMode = false;
+let dragDropManager;
 
 // Initialize the simulation
 function init() {
@@ -30,6 +31,9 @@ function init() {
     
     // Add event listeners
     addEventListeners();
+    
+    // Initialize drag and drop manager
+    initDragDrop();
     
     // Start the simulation
     world.start();
@@ -94,6 +98,41 @@ function createTerrain() {
     }
 }
 
+// Initialize drag and drop functionality
+function initDragDrop() {
+    // Check if DragDropManager is available
+    if (window.DragDropManager) {
+        // Create drag and drop manager
+        dragDropManager = new DragDropManager(world);
+        
+        // Load saved positions
+        setTimeout(() => {
+            dragDropManager.loadAllPositions();
+            
+            if (window.Logger) {
+                Logger.info('Loaded saved object positions');
+            } else {
+                console.log('Loaded saved object positions');
+            }
+        }, 1000); // Wait for all objects to be fully initialized
+        
+        if (window.Logger) {
+            Logger.info('Drag and drop functionality initialized');
+        } else {
+            console.log('Drag and drop functionality initialized');
+        }
+        
+        // Update info display with edit mode instructions
+        updateInfoDisplay();
+    } else {
+        if (window.Logger) {
+            Logger.warn('DragDropManager not available, drag and drop functionality disabled');
+        } else {
+            console.warn('DragDropManager not available, drag and drop functionality disabled');
+        }
+    }
+}
+
 // Add event listeners
 function addEventListeners() {
     // Toggle debug mode on 'D' key press
@@ -144,6 +183,10 @@ function resetTimeSpeed() {
 function updateInfoDisplay() {
     if (!infoElement) return;
     
+    // Add drag and drop instructions if available
+    const dragDropInstructions = window.DragDropManager ? 
+        `- E: Toggle edit mode (for moving objects)<br>` : '';
+    
     infoElement.innerHTML = `
         Simple Land Simulation<br>
         <small>
@@ -151,6 +194,7 @@ function updateInfoDisplay() {
             <br>
             Controls:<br>
             - D: Toggle debug mode<br>
+            ${dragDropInstructions}
             - L: Toggle log panel<br>
         </small>
     `;

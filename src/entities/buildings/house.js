@@ -1,7 +1,82 @@
 /**
  * House building module for the Whiterun-inspired layout
  * Creates Nordic-style houses with various customizations
+ * 
+ * Includes localStorage functionality to maintain consistent house positions
+ * between sessions.
  */
+
+/**
+ * Storage utility functions for house data
+ */
+const HouseStorage = {
+    /**
+     * Save house data to localStorage
+     * @param {string} id - House ID
+     * @param {Object} data - House data to save
+     */
+    saveHouseData: function(id, data) {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(`house_${id}`, JSON.stringify(data));
+                if (window.Logger) {
+                    Logger.debug(`Saved house data for ${id} to localStorage`);
+                } else {
+                    console.log(`Saved house data for ${id} to localStorage`);
+                }
+            }
+        } catch (e) {
+            if (window.Logger) {
+                Logger.error(`Failed to save house data to localStorage: ${e.message}`);
+            } else {
+                console.error(`Failed to save house data to localStorage: ${e.message}`);
+            }
+        }
+    },
+    
+    /**
+     * Load house data from localStorage
+     * @param {string} id - House ID
+     * @returns {Object|null} House data or null if not found
+     */
+    loadHouseData: function(id) {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const data = localStorage.getItem(`house_${id}`);
+                if (data) {
+                    return JSON.parse(data);
+                }
+            }
+        } catch (e) {
+            if (window.Logger) {
+                Logger.error(`Failed to load house data from localStorage: ${e.message}`);
+            } else {
+                console.error(`Failed to load house data from localStorage: ${e.message}`);
+            }
+        }
+        return null;
+    },
+    
+    /**
+     * Generate a predictable ID for a house at a specific angle
+     * @param {number} angle - Angle in radians
+     * @returns {string} A consistent ID for this angle
+     */
+    getCircleHouseId: function(angle) {
+        // Convert angle to a number between 1-12 (like a clock)
+        const clockPosition = Math.floor((angle / (Math.PI * 2)) * 12) + 1;
+        return `circle_${clockPosition}`;
+    },
+    
+    /**
+     * Generate a predictable ID for an inner house
+     * @param {number} index - House index
+     * @returns {string} A consistent ID for this inner house
+     */
+    getInnerHouseId: function(index) {
+        return `inner_${index}`;
+    }
+};
 
 /**
  * Add a house at the specified position
@@ -155,9 +230,31 @@ function addHousesInCircle(parent, centerX, centerZ, radius) {
         const x = centerX + Math.cos(angle) * radius;
         const z = centerZ + Math.sin(angle) * radius;
         
-        // Randomize house size and rotation
-        const scale = 0.8 + Math.random() * 0.4;
-        const rotation = angle + Math.PI + (Math.random() * 0.2 - 0.1);
+        // Generate a consistent ID for this house position
+        const housePositionId = HouseStorage.getCircleHouseId(angle);
+        
+        // Try to load saved house data
+        let scale, rotation;
+        const savedData = HouseStorage.loadHouseData(housePositionId);
+        
+        if (savedData) {
+            // Use saved values
+            scale = savedData.scale;
+            rotation = savedData.rotation;
+            
+            if (window.Logger) {
+                Logger.debug(`Loaded house data for angle ${angle.toFixed(2)}: scale=${scale.toFixed(2)}, rotation=${rotation.toFixed(2)}`);
+            } else {
+                console.log(`Loaded house data for angle ${angle.toFixed(2)}: scale=${scale.toFixed(2)}, rotation=${rotation.toFixed(2)}`);
+            }
+        } else {
+            // Generate new random values
+            scale = 0.8 + Math.random() * 0.4;
+            rotation = angle + Math.PI + (Math.random() * 0.2 - 0.1);
+            
+            // Save the data for future use
+            HouseStorage.saveHouseData(housePositionId, { scale, rotation });
+        }
         
         // Add house with angle parameter for consistent ID generation
         const house = addHouse(parent, x, z, scale, rotation, angle);
@@ -179,13 +276,43 @@ function addHousesInCircle(parent, centerX, centerZ, radius) {
 function addInnerHouses(parent, centerX, centerZ, count) {
     // Add houses in the inner area
     for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const innerRadius = 10 + Math.random() * 5;
+        // Generate a consistent ID for this inner house
+        const innerHouseId = HouseStorage.getInnerHouseId(i);
+        
+        // Try to load saved house data
+        let angle, innerRadius, scale, rotation;
+        const savedData = HouseStorage.loadHouseData(innerHouseId);
+        
+        if (savedData) {
+            // Use saved values
+            angle = savedData.angle;
+            innerRadius = savedData.innerRadius;
+            scale = savedData.scale;
+            rotation = savedData.rotation;
+            
+            if (window.Logger) {
+                Logger.debug(`Loaded inner house data for index ${i}: angle=${angle.toFixed(2)}, radius=${innerRadius.toFixed(2)}`);
+            } else {
+                console.log(`Loaded inner house data for index ${i}: angle=${angle.toFixed(2)}, radius=${innerRadius.toFixed(2)}`);
+            }
+        } else {
+            // Generate new random values
+            angle = Math.random() * Math.PI * 2;
+            innerRadius = 10 + Math.random() * 5;
+            scale = 0.7 + Math.random() * 0.3;
+            rotation = angle + Math.PI + (Math.random() * 0.4 - 0.2);
+            
+            // Save the data for future use
+            HouseStorage.saveHouseData(innerHouseId, { 
+                angle, 
+                innerRadius, 
+                scale, 
+                rotation 
+            });
+        }
+        
         const x = centerX + Math.cos(angle) * innerRadius;
         const z = centerZ + Math.sin(angle) * innerRadius;
-        
-        const scale = 0.7 + Math.random() * 0.3;
-        const rotation = angle + Math.PI + (Math.random() * 0.4 - 0.2);
         
         // Change the color of the first inner house to bright red
         if (i === 0) {
@@ -352,5 +479,7 @@ window.HouseBuilder = {
     addHouse,
     addHousesInCircle,
     addInnerHouses,
-    addHouseWithCustomColor
+    addHouseWithCustomColor,
+    // Export storage functions for potential use elsewhere
+    storage: HouseStorage
 };

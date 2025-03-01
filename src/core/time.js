@@ -19,7 +19,7 @@ class TimeSystem extends System {
         
         // Time of day ranges
         this.dayStartHour = 6;  // 6 AM
-        this.dayEndHour = 18;   // 6 PM
+        this.dayEndHour = 20;   // 8 PM
         
         // UI element for displaying time
         this.timeDisplay = document.getElementById('time-display');
@@ -93,11 +93,18 @@ class TimeSystem extends System {
      * @param {number} deltaTime - Time since last update in seconds
      */
     advanceTime(deltaTime) {
-        // Store previous hour for change detection
+        // Debug: Log deltaTime and timeSpeed
+        console.log(`advanceTime called with deltaTime: ${deltaTime}, timeSpeed: ${this.timeSpeed}`);
+        
+        // Store previous hour and tick for change detection
         const prevHour = this.getCurrentHour();
+        const prevTick = this.currentTick;
         
         // Advance time based on real time and speed multiplier - much faster
         this.currentTick += deltaTime * this.timeSpeed * 30; // Multiply by 30 for faster time progression
+        
+        // Debug: Log tick advancement
+        console.log(`Tick advanced from ${prevTick.toFixed(2)} to ${this.currentTick.toFixed(2)}, change: ${(this.currentTick - prevTick).toFixed(2)}`);
         
         // Update time display
         this.updateTimeDisplay();
@@ -105,9 +112,12 @@ class TimeSystem extends System {
         // Get current hour after update
         const currentHour = this.getCurrentHour();
         
+        // Debug: Always log current time
+        console.log(`Current time: Day ${this.getCurrentDay() + 1}, ${currentHour}:${Math.floor((this.currentTick % this.ticksPerHour) / this.ticksPerHour * 60)} (${this.isDaytime() ? 'Day' : 'Night'})`);
+        
         // Log time changes when hour changes
         if (prevHour !== currentHour) {
-            console.log(`Time changed to: Day ${this.getCurrentDay() + 1}, ${currentHour}:00`);
+            console.log(`Hour changed from ${prevHour} to ${currentHour}`);
             
             // Force behavior updates for all entities when hour changes
             if (this.world && this.world.entities) {

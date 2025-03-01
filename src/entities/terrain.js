@@ -944,4 +944,97 @@ class Terrain extends Entity {
         // Mark position as occupied
         this.markPositionOccupied(x, z, templeSize, 'temple');
     }
+    
+    /**
+     * Load saved positions for all objects in the terrain
+     * This method is called by the DragDropManager to apply saved positions
+     */
+    loadSavedPositions() {
+        if (window.Logger) {
+            Logger.info('Loading saved positions for terrain objects');
+        } else {
+            console.log('Loading saved positions for terrain objects');
+        }
+        
+        // Skip if mesh is not available
+        if (!this.mesh) return;
+        
+        let loadedCount = 0;
+        
+        // Traverse all children of the terrain mesh
+        this.mesh.traverse(object => {
+            // Only process objects with userData and a type
+            if (object.userData && object.userData.id && 
+                ['house', 'tree', 'market_stand', 'blacksmith', 'temple'].includes(object.userData.type)) {
+                
+                const objectType = object.userData.type;
+                const objectId = object.userData.id;
+                
+                // Create a storage key based on object type and ID
+                const storageKey = `${objectType}_${objectId}_position`;
+                
+                try {
+                    // Load from localStorage
+                    const positionData = localStorage.getItem(storageKey);
+                    
+                    if (positionData) {
+                        const position = JSON.parse(positionData);
+                        
+                        // Store original position for reference
+                        const originalX = object.position.x;
+                        const originalZ = object.position.z;
+                        
+                        // Update object position
+                        object.position.set(position.x, position.y, position.z);
+                        
+                        // Update occupied positions
+                        this.updateOccupiedPosition(objectType, originalX, originalZ, position.x, position.z);
+                        
+                        loadedCount++;
+                        
+                        if (window.Logger) {
+                            Logger.debug(`Loaded position for ${objectType} ${objectId}: (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
+                        } else {
+                            console.log(`Loaded position for ${objectType} ${objectId}: (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
+                        }
+                    }
+                } catch (e) {
+                    if (window.Logger) {
+                        Logger.error(`Failed to load position for ${objectType} ${objectId}: ${e.message}`);
+                    } else {
+                        console.error(`Failed to load position for ${objectType} ${objectId}: ${e.message}`);
+                    }
+                }
+            }
+        });
+        
+        if (window.Logger) {
+            Logger.info(`Loaded positions for ${loadedCount} objects`);
+        } else {
+            console.log(`Loaded positions for ${loadedCount} objects`);
+        }
+    }
+    
+    /**
+     * Update the occupied positions when an object is moved
+     * @param {string} type - Type of object
+     * @param {number} oldX - Original X position
+     * @param {number} oldZ - Original Z position
+     * @param {number} newX - New X position
+     * @param {number} newZ - New Z position
+     */
+    updateOccupiedPosition(type, oldX, oldZ, newX, newZ) {
+        // Find the occupied position entry
+        const index = this.occupiedPositions.findIndex(pos => 
+            pos.type === type && 
+            Math.abs(pos.x - oldX) < 0.1 && 
+            Math.abs(pos.z - oldZ) < 0.1
+        );
+        
+        // If found, update it
+        if (index !== -1) {
+            this.occupiedPositions[index].x = newX;
+            this.occupiedPositions[index].z = newZ;
+        }
+    }
 }
