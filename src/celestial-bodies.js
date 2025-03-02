@@ -87,16 +87,29 @@ export class CelestialSystem {
         // Update sun position
         this.sun.position = new BABYLON.Vector3(sunX, sunY, sunZ);
         
-        // Moon is opposite to the sun (with same height offset)
-        this.moon.position = new BABYLON.Vector3(-sunX, -orbitY + (2 * this.skyHeightOffset), -sunZ);
+        // Moon is opposite to the sun but follows the same arc pattern
+        // We need to calculate the moon's position based on the opposite angle (sunAngle + π)
+        const moonAngle = (normalizedTime + 0.5) % 1 * Math.PI * 2; // Opposite side of the day/night cycle
         
-        // Update visibility based on angle rather than height
+        // Calculate moon orbit position
+        const moonOrbitZ = this.skyRadius * Math.sin(moonAngle);
+        const moonOrbitY = this.skyRadius * Math.cos(moonAngle);
+        
+        // Apply the same tilt transformation as the sun
+        const moonX = -(moonOrbitZ * Math.sin(this.orbitTilt));
+        const moonY = (moonOrbitY * Math.cos(this.orbitTilt)) + this.skyHeightOffset;
+        const moonZ = (moonOrbitZ * Math.cos(this.orbitTilt));
+        
+        // Update moon position
+        this.moon.position = new BABYLON.Vector3(moonX, moonY, moonZ);
+        
+        // Update visibility based on height above horizon
         // Sun is visible when in the upper half of its orbit
         const sunVisibility = Math.max(0, Math.min(1, Math.sin(sunAngle) * 5));
         this.sun.visibility = sunVisibility;
         
-        // Moon is visible when in the upper half of its orbit (opposite of sun)
-        const moonVisibility = Math.max(0, Math.min(1, -Math.sin(sunAngle) * 5));
+        // Moon is visible when in the upper half of its orbit
+        const moonVisibility = Math.max(0, Math.min(1, Math.sin(moonAngle) * 5));
         this.moon.visibility = moonVisibility;
         
         // Return sun position for other systems to use

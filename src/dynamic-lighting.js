@@ -13,6 +13,9 @@ export class DynamicLighting {
         // Shadow casters
         this.shadowCasters = [];
         
+        // Configuration
+        this.skyHeightOffset = 200; // Height above ground for orbit center (same as in CelestialSystem)
+        
         // Initialize
         this.createLighting();
     }
@@ -112,6 +115,14 @@ export class DynamicLighting {
             ).normalize().negate();
             
             this.moonLight.direction = moonDirection;
+            
+            // Update moon light position for better shadow casting
+            const lightDistance = 200; // Distance from center for light source
+            this.moonLight.position = new BABYLON.Vector3(
+                -moonDirection.x * lightDistance,
+                -moonDirection.y * lightDistance,
+                -moonDirection.z * lightDistance
+            );
         }
         
         // Calculate sun intensity based on height above horizon
@@ -122,11 +133,11 @@ export class DynamicLighting {
             sunIntensity = Math.pow(normalizedHeight, 0.5) * 0.8; // Max intensity 0.8
         }
         
-        // Calculate moon intensity based on height above horizon
+        // Calculate moon intensity based on angle
         let moonIntensity = 0;
-        if (moonAboveHorizon) {
+        if (moonPosition.y > this.skyHeightOffset) { // If moon is above the horizon
             // Normalize height to 0-1 range and apply curve for more realistic intensity
-            const normalizedHeight = Math.min(Math.abs(moonPosition.y) / 100, 1);
+            const normalizedHeight = Math.min(Math.abs(moonPosition.y - this.skyHeightOffset) / 100, 1);
             moonIntensity = Math.pow(normalizedHeight, 0.5) * 0.3; // Max intensity 0.3
         }
         
