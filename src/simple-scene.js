@@ -1,5 +1,4 @@
 import * as BABYLON from '@babylonjs/core';
-import { createStoneWall } from './wall';
 import { createNordicCabin } from './cabin';
 
 export function createSimpleScene(engine) {
@@ -12,10 +11,10 @@ export function createSimpleScene(engine) {
     // Add an ArcRotateCamera for easier panning and movement
     const camera = new BABYLON.ArcRotateCamera(
         "arcCamera", 
-        0, // Alpha (rotation around Y axis) - looking directly at the wall
+        0, // Alpha (rotation around Y axis)
         Math.PI / 4,  // Beta (rotation around X axis) - slightly from above
         40,           // Radius (distance from target)
-        new BABYLON.Vector3(0, 3, -20), // Target position - centered on the wall at gate height
+        new BABYLON.Vector3(0, 3, -20), // Target position
         scene
     );
     
@@ -65,7 +64,7 @@ export function createSimpleScene(engine) {
                 camera.position.y += speed;
             }
             
-            // R key to reset camera to view the wall
+            // R key to reset camera position
             if (kbInfo.event.keyCode === 82) { // R key
                 camera.alpha = 0;
                 camera.beta = Math.PI / 4;
@@ -89,7 +88,7 @@ export function createSimpleScene(engine) {
     hemiLight.intensity = 0.6;
     hemiLight.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2); // Darker ground reflection
     
-    // Directional light to create shadows and highlight the wall
+    // Directional light to create shadows and highlight the scene
     const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(0.5, -0.5, 0.5), scene);
     dirLight.intensity = 0.8;
     dirLight.position = new BABYLON.Vector3(-30, 20, -10);
@@ -151,20 +150,6 @@ export function createSimpleScene(engine) {
     
     ground.material = groundMaterial;
     
-    // Create a stone wall with gate
-    console.log("Adding stone wall with gate");
-    const stoneWall = createStoneWall(scene, ground);
-    
-    // Make the wall cast shadows
-    if (stoneWall && stoneWall.getChildMeshes) {
-        const wallMeshes = stoneWall.getChildMeshes();
-        wallMeshes.forEach(mesh => {
-            shadowGenerator.addShadowCaster(mesh);
-        });
-    } else if (stoneWall) {
-        shadowGenerator.addShadowCaster(stoneWall);
-    }
-    
     // Create a Skyrim-style Nordic cabin
     console.log("Adding Skyrim-style Nordic cabin");
     const nordicCabin = createNordicCabin(scene, ground);
@@ -194,7 +179,7 @@ export function createSimpleScene(engine) {
     debugText.style.zIndex = "100";
     debugText.innerHTML = `
         <h3 style="margin-top: 0;">Babylon.js Landscape</h3>
-        <p>Skyrim-Inspired Scene with Stone Wall and Nordic Cabin</p>
+        <p>Skyrim-Inspired Scene with Nordic Cabin</p>
         <h4>Camera Controls:</h4>
         <ul style="padding-left: 20px; margin-bottom: 0;">
             <li>Left Mouse: Rotate camera</li>
@@ -202,7 +187,7 @@ export function createSimpleScene(engine) {
             <li>Mouse Wheel: Zoom in/out</li>
             <li>WASD: Pan camera position</li>
             <li>Q/E: Adjust height</li>
-            <li>R: View the wall</li>
+            <li>R: Reset camera position</li>
             <li>C: View the cabin</li>
         </ul>
     `;
