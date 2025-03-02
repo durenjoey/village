@@ -228,11 +228,198 @@ function createRoof(scene, parent, position, width, length, wallHeight, roofHeig
         console.log("Creating gable ends");
         createGableEnds(scene, parent, position, width, length, wallHeight, roofHeight, material);
         
+        // Add logs to conceal any remaining transparency
+        console.log("Adding logs to roof");
+        addRoofLogs(scene, parent, position, width, length, wallHeight, roofHeight, material);
+        
         console.log("Roof creation completed successfully");
         return null; // Return value not used
     } catch (error) {
         console.error("Error creating roof:", error);
         return null;
+    }
+}
+
+// Add logs to the roof to conceal any remaining transparency
+function addRoofLogs(scene, parent, position, width, length, wallHeight, roofHeight, material) {
+    console.log("Adding logs to roof");
+    
+    try {
+        // Create a darker material for the logs
+        const logMaterial = material.clone("logMaterial");
+        logMaterial.diffuseColor = new BABYLON.Color3(0.25, 0.2, 0.15); // Darker than roof
+        
+        // Create logs along the ridge of the roof
+        const logDiameter = 0.3;
+        const logSpacing = 1.0;
+        const numLogs = Math.floor(length / logSpacing);
+        
+        // Create a log along the ridge
+        const ridgeLog = BABYLON.MeshBuilder.CreateCylinder(
+            "ridgeLog",
+            {
+                height: length + 0.4,
+                diameter: logDiameter,
+                tessellation: 12
+            },
+            scene
+        );
+        
+        // Position the ridge log
+        ridgeLog.position = new BABYLON.Vector3(
+            position.x,
+            position.y + 0.6 + wallHeight + roofHeight - 0.1,
+            position.z
+        );
+        
+        // Rotate to align with the ridge
+        ridgeLog.rotation.x = Math.PI / 2;
+        
+        // Apply material
+        ridgeLog.material = logMaterial;
+        
+        // Parent to the cabin
+        ridgeLog.parent = parent;
+        
+        // Create logs along the sides of the roof
+        const overhang = 0.8;
+        const sideLogSpacing = 1.5;
+        const numSideLogs = Math.floor(length / sideLogSpacing) - 1;
+        
+        for (let i = 1; i <= numSideLogs; i++) {
+            // Calculate position for this log
+            const z = position.z - (length / 2) + (i * sideLogSpacing);
+            
+            // Create a log for the left side
+            const leftLog = BABYLON.MeshBuilder.CreateCylinder(
+                `leftLog_${i}`,
+                {
+                    height: Math.sqrt(Math.pow(width/2 + overhang, 2) + Math.pow(roofHeight, 2)) + 0.2,
+                    diameter: logDiameter,
+                    tessellation: 12
+                },
+                scene
+            );
+            
+            // Position and rotate left log
+            leftLog.position = new BABYLON.Vector3(
+                position.x - (width / 4),
+                position.y + 0.6 + wallHeight + roofHeight/2,
+                z
+            );
+            
+            // Calculate the angle of the roof slope
+            const roofAngle = Math.atan(roofHeight / (width/2 + overhang));
+            
+            // Rotate to align with the roof slope
+            leftLog.rotation.z = roofAngle;
+            leftLog.rotation.y = Math.PI / 2;
+            
+            // Apply material
+            leftLog.material = logMaterial;
+            
+            // Parent to the cabin
+            leftLog.parent = parent;
+            
+            // Create a log for the right side
+            const rightLog = BABYLON.MeshBuilder.CreateCylinder(
+                `rightLog_${i}`,
+                {
+                    height: Math.sqrt(Math.pow(width/2 + overhang, 2) + Math.pow(roofHeight, 2)) + 0.2,
+                    diameter: logDiameter,
+                    tessellation: 12
+                },
+                scene
+            );
+            
+            // Position and rotate right log
+            rightLog.position = new BABYLON.Vector3(
+                position.x + (width / 4),
+                position.y + 0.6 + wallHeight + roofHeight/2,
+                z
+            );
+            
+            // Rotate to align with the roof slope (opposite angle)
+            rightLog.rotation.z = -roofAngle;
+            rightLog.rotation.y = Math.PI / 2;
+            
+            // Apply material
+            rightLog.material = logMaterial;
+            
+            // Parent to the cabin
+            rightLog.parent = parent;
+        }
+        
+        // Add horizontal logs to fill the gap between the walls and roof
+        console.log("Adding horizontal logs to fill wall-roof gap");
+        addWallToRoofLogs(scene, parent, position, width, length, wallHeight, roofHeight, logMaterial);
+        
+        console.log("Roof logs added successfully");
+    } catch (error) {
+        console.error("Error adding roof logs:", error);
+    }
+}
+
+// Add horizontal logs to fill the gap between the walls and roof
+function addWallToRoofLogs(scene, parent, position, width, length, wallHeight, roofHeight, material) {
+    try {
+        // Parameters for the horizontal logs
+        const logHeight = 0.25;
+        const logDepth = 0.3;
+        const overhang = 0.8;
+        
+        // Calculate the angle of the roof slope
+        const roofAngle = Math.atan(roofHeight / (width/2 + overhang));
+        
+        // Create logs for front and back gable ends
+        for (let side = -1; side <= 1; side += 2) { // -1 for back, 1 for front
+            if (side === 0) continue;
+            
+            const zPos = position.z + side * length/2;
+            
+            // Calculate how many logs we need based on the height
+            const maxHeight = roofHeight - 0.2; // Leave a small gap at the top
+            const numLogs = Math.floor(maxHeight / logHeight);
+            
+            for (let i = 0; i < numLogs; i++) {
+                // Calculate the height of this log from the wall top
+                const logY = i * logHeight;
+                
+                // Calculate the width of this log based on the roof slope
+                // As we go higher, the log gets shorter
+                const logWidth = width - (2 * (logY / Math.tan(roofAngle)));
+                
+                if (logWidth <= 0.2) continue; // Skip if too short
+                
+                // Create the horizontal log
+                const horizontalLog = BABYLON.MeshBuilder.CreateBox(
+                    `horizontalLog_${side}_${i}`,
+                    {
+                        width: logWidth,
+                        height: logHeight * 0.9, // Slightly shorter for gap effect
+                        depth: logDepth
+                    },
+                    scene
+                );
+                
+                // Position the log
+                horizontalLog.position = new BABYLON.Vector3(
+                    position.x,
+                    position.y + 0.6 + wallHeight + logY + (logHeight/2),
+                    zPos + (side * logDepth/2)
+                );
+                
+                // Apply material
+                horizontalLog.material = material;
+                
+                // Parent to the cabin
+                horizontalLog.parent = parent;
+            }
+        }
+        
+        console.log("Wall-to-roof logs added successfully");
+    } catch (error) {
+        console.error("Error adding wall-to-roof logs:", error);
     }
 }
 
