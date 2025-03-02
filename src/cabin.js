@@ -42,6 +42,9 @@ export function createNordicCabin(scene, ground, id = "cabin_1") {
         // Rotate the cabin slightly for a better view
         cabinParent.rotation.y = Math.PI / 6; // 30 degrees
         
+        // Try to load saved position
+        loadSavedPosition(cabinParent);
+        
         console.log("Nordic cabin created successfully");
         return cabinParent;
     } catch (error) {
