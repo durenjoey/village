@@ -10,6 +10,10 @@ export class CelestialSystem {
         this.sunLight = null;
         this.moonLight = null;
         
+        // Stars
+        this.stars = [];
+        this.starsCreated = false;
+        
         // Configuration
         this.skyRadius = 400; // Radius of the celestial orbit
         this.skyHeightOffset = 200; // Height above ground for orbit center
@@ -17,6 +21,104 @@ export class CelestialSystem {
         
         // Initialize
         this.createCelestialBodies();
+        this.createStars();
+    }
+    
+    // Create stars for night sky
+    createStars() {
+        if (this.starsCreated) return;
+        
+        console.log("Creating stars for night sky");
+        
+        // Number of stars
+        const numStars = 500;
+        
+        // Create stars
+        for (let i = 0; i < numStars; i++) {
+            // Create a small sphere for each star
+            const star = BABYLON.MeshBuilder.CreateSphere(
+                `star_${i}`,
+                { diameter: 0.5 + Math.random() * 0.5 }, // Random size
+                this.scene
+            );
+            
+            // Position star randomly on the skybox
+            const phi = Math.random() * Math.PI * 2; // Random angle around y-axis
+            const theta = Math.random() * Math.PI; // Random angle from top to bottom
+            const radius = 490; // Just inside the skybox (size 1000)
+            
+            // Convert spherical to cartesian coordinates
+            const x = radius * Math.sin(theta) * Math.cos(phi);
+            const y = radius * Math.cos(theta);
+            const z = radius * Math.sin(theta) * Math.sin(phi);
+            
+            star.position = new BABYLON.Vector3(x, y, z);
+            
+            // Create emissive material for the star
+            const starMaterial = new BABYLON.StandardMaterial(`starMaterial_${i}`, this.scene);
+            starMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            
+            // Add some color variation
+            if (Math.random() > 0.8) {
+                // Some stars are slightly blue or red
+                const blueOrRed = Math.random() > 0.5;
+                if (blueOrRed) {
+                    starMaterial.emissiveColor = new BABYLON.Color3(0.8, 0.8, 1);
+                } else {
+                    starMaterial.emissiveColor = new BABYLON.Color3(1, 0.8, 0.8);
+                }
+            }
+            
+            // Disable lighting effects on stars
+            starMaterial.disableLighting = true;
+            
+            // Apply material
+            star.material = starMaterial;
+            
+            // Add to stars array
+            this.stars.push(star);
+            
+            // Initially hide stars
+            star.visibility = 0;
+        }
+        
+        // Add some larger, brighter stars
+        for (let i = 0; i < 20; i++) {
+            // Create a slightly larger sphere for bright stars
+            const brightStar = BABYLON.MeshBuilder.CreateSphere(
+                `brightStar_${i}`,
+                { diameter: 1.0 + Math.random() * 0.5 },
+                this.scene
+            );
+            
+            // Position randomly
+            const phi = Math.random() * Math.PI * 2;
+            const theta = Math.random() * Math.PI;
+            const radius = 490;
+            
+            const x = radius * Math.sin(theta) * Math.cos(phi);
+            const y = radius * Math.cos(theta);
+            const z = radius * Math.sin(theta) * Math.sin(phi);
+            
+            brightStar.position = new BABYLON.Vector3(x, y, z);
+            
+            // Create emissive material with glow
+            const brightStarMaterial = new BABYLON.StandardMaterial(`brightStarMaterial_${i}`, this.scene);
+            brightStarMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            brightStarMaterial.disableLighting = true;
+            
+            // Apply material
+            brightStar.material = brightStarMaterial;
+            
+            // Add to stars array
+            this.stars.push(brightStar);
+            
+            // Initially hide stars
+            brightStar.visibility = 0;
+        }
+        
+        this.starsCreated = true;
+        console.log(`Created ${this.stars.length} stars`);
     }
     
     createCelestialBodies() {
@@ -112,6 +214,9 @@ export class CelestialSystem {
         const moonVisibility = Math.max(0, Math.min(1, Math.sin(moonAngle) * 5));
         this.moon.visibility = moonVisibility;
         
+        // Update stars visibility - stars are visible at night
+        this.updateStars(normalizedTime);
+        
         // Return sun position for other systems to use
         return {
             sunPosition: this.sun.position,
@@ -119,6 +224,45 @@ export class CelestialSystem {
             sunAboveHorizon: sunY > 0,
             moonAboveHorizon: -sunY > 0
         };
+    }
+    
+    // Update stars visibility based on time of day
+    updateStars(normalizedTime) {
+        if (!this.starsCreated || this.stars.length === 0) return;
+        
+        // Time ranges (normalized)
+        const dawn = 5/24;     // 5am
+        const morning = 7/24;  // 7am
+        const evening = 17/24; // 5pm
+        const dusk = 19/24;    // 7pm
+        const night = 21/24;   // 9pm
+        
+        let starVisibility = 0;
+        
+        // Calculate star visibility based on time
+        if (normalizedTime >= dusk && normalizedTime < night) {
+            // Dusk to night: gradually show stars
+            const t = (normalizedTime - dusk) / (night - dusk);
+            starVisibility = t;
+        } else if (normalizedTime >= night || normalizedTime < dawn) {
+            // Night to dawn: stars fully visible
+            starVisibility = 1;
+        } else if (normalizedTime >= dawn && normalizedTime < morning) {
+            // Dawn to morning: gradually hide stars
+            const t = (normalizedTime - dawn) / (morning - dawn);
+            starVisibility = 1 - t;
+        }
+        
+        // Update visibility of all stars
+        for (const star of this.stars) {
+            star.visibility = starVisibility;
+            
+            // Add some twinkling effect to random stars
+            if (starVisibility > 0 && Math.random() < 0.01) {
+                const twinkle = 0.7 + Math.random() * 0.3;
+                star.visibility = starVisibility * twinkle;
+            }
+        }
     }
     
     // Get the current sun direction (for lighting)
