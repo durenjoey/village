@@ -331,8 +331,13 @@ export function createSimpleScene(engine) {
     timeControls.style.borderRadius = "5px";
     timeControls.innerHTML = `
         <h4 style="margin-top: 0;">Time Controls:</h4>
-        <div style="margin-bottom: 10px;">
-            <button id="timeScaleBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Speed: 1x</button>
+        <div style="margin-bottom: 5px;">
+            <div id="currentSpeed" style="text-align: center; margin-bottom: 5px; font-size: 16px;">Speed: 1x</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <button id="slowDownBtn" style="width: 48%; padding: 5px;">Slower</button>
+                <button id="speedUpBtn" style="width: 48%; padding: 5px;">Faster</button>
+            </div>
+            <button id="resetSpeedBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Reset to 1x</button>
             <button id="setTimeBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Set Time</button>
         </div>
     `;
@@ -340,24 +345,73 @@ export function createSimpleScene(engine) {
     
     // Add event listeners for time controls
     setTimeout(() => {
-        const timeScaleBtn = document.getElementById("timeScaleBtn");
+        const slowDownBtn = document.getElementById("slowDownBtn");
+        const speedUpBtn = document.getElementById("speedUpBtn");
+        const resetSpeedBtn = document.getElementById("resetSpeedBtn");
+        const currentSpeedDisplay = document.getElementById("currentSpeed");
         const setTimeBtn = document.getElementById("setTimeBtn");
         
-        let currentTimeScale = 1;
-        const timeScales = [1, 5, 10, 30, 60, 120];
+        // Define time scales including slowdown options
+        // Values < 1 are slowdowns, 1 is real-time, values > 1 are speedups
+        const timeScales = [
+            1/120, 1/60, 1/30, 1/10, 1/5,  // Slowdown options
+            1,                             // Real-time
+            5, 10, 30, 60, 120             // Speedup options
+        ];
         
-        if (timeScaleBtn) {
-            timeScaleBtn.addEventListener("click", () => {
-                // Cycle through time scales
-                const currentIndex = timeScales.indexOf(currentTimeScale);
-                const nextIndex = (currentIndex + 1) % timeScales.length;
-                currentTimeScale = timeScales[nextIndex];
-                
-                // Update button text
-                timeScaleBtn.textContent = `Speed: ${currentTimeScale}x`;
-                
-                // Update day-night cycle
-                dayNightCycle.setTimeScale(currentTimeScale * 60); // Convert to minutes per second
+        // Start at index 5 (real-time, 1x)
+        let currentTimeScaleIndex = 5;
+        let currentTimeScale = timeScales[currentTimeScaleIndex];
+        
+        // Format time scale for display
+        const formatTimeScale = (scale) => {
+            if (scale === 1) return "1x";
+            if (scale < 1) {
+                // For slowdowns, show as fraction (e.g., 1/120x)
+                const denominator = Math.round(1 / scale);
+                return `1/${denominator}x`;
+            }
+            // For speedups, show as multiplier (e.g., 120x)
+            return `${scale}x`;
+        };
+        
+        // Update time scale display and apply to day-night cycle
+        const updateTimeScale = () => {
+            currentTimeScale = timeScales[currentTimeScaleIndex];
+            currentSpeedDisplay.textContent = `Speed: ${formatTimeScale(currentTimeScale)}`;
+            dayNightCycle.setTimeScale(currentTimeScale * 60); // Convert to minutes per second
+            
+            // Update button states
+            slowDownBtn.disabled = currentTimeScaleIndex === 0;
+            speedUpBtn.disabled = currentTimeScaleIndex === timeScales.length - 1;
+        };
+        
+        // Initialize button states
+        updateTimeScale();
+        
+        // Add event listeners for time control buttons
+        if (slowDownBtn) {
+            slowDownBtn.addEventListener("click", () => {
+                if (currentTimeScaleIndex > 0) {
+                    currentTimeScaleIndex--;
+                    updateTimeScale();
+                }
+            });
+        }
+        
+        if (speedUpBtn) {
+            speedUpBtn.addEventListener("click", () => {
+                if (currentTimeScaleIndex < timeScales.length - 1) {
+                    currentTimeScaleIndex++;
+                    updateTimeScale();
+                }
+            });
+        }
+        
+        if (resetSpeedBtn) {
+            resetSpeedBtn.addEventListener("click", () => {
+                currentTimeScaleIndex = 5; // Reset to real-time (1x)
+                updateTimeScale();
             });
         }
         
