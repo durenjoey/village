@@ -1,4 +1,5 @@
 import * as BABYLON from '@babylonjs/core';
+import { createRiver } from './river';
 
 export function createSimpleScene(engine) {
     console.log("Creating scene with grass textured ground");
@@ -12,14 +13,14 @@ export function createSimpleScene(engine) {
         "arcCamera", 
         -Math.PI / 2, // Alpha (rotation around Y axis)
         Math.PI / 3,  // Beta (rotation around X axis)
-        25,           // Radius (distance from target)
+        50,           // Radius (distance from target) - increased for better landscape view
         new BABYLON.Vector3(0, 0, 0), // Target position
         scene
     );
     
     // Set camera limits
     camera.lowerRadiusLimit = 5;   // Minimum zoom distance
-    camera.upperRadiusLimit = 100; // Maximum zoom distance
+    camera.upperRadiusLimit = 200; // Maximum zoom distance - increased for the larger landscape
     camera.wheelDeltaPercentage = 0.01; // Slower zoom speed
     
     // Set camera movement speeds
@@ -67,7 +68,7 @@ export function createSimpleScene(engine) {
             if (kbInfo.event.keyCode === 82) { // R key
                 camera.alpha = -Math.PI / 2;
                 camera.beta = Math.PI / 3;
-                camera.radius = 25;
+                camera.radius = 50; // Match the initial radius
                 camera.target = new BABYLON.Vector3(0, 0, 0);
             }
         }
@@ -77,8 +78,8 @@ export function createSimpleScene(engine) {
     const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
     light.intensity = 0.7;
     
-    // Create a ground with grass texture
-    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 50, height: 50}, scene);
+    // Create a larger ground with grass texture to accommodate the river
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 200, height: 200}, scene);
     const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
     
     // Apply grass texture with error handling
@@ -128,6 +129,10 @@ export function createSimpleScene(engine) {
     
     ground.material = groundMaterial;
     
+    // Create a river that runs across the landscape
+    console.log("Adding river to the landscape");
+    const river = createRiver(scene, ground);
+    
     // Add a simple sphere to verify rendering
     const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2}, scene);
     sphere.position.y = 1;
@@ -160,7 +165,7 @@ export function createSimpleScene(engine) {
     debugText.style.zIndex = "100";
     debugText.innerHTML = `
         <h3 style="margin-top: 0;">Babylon.js Landscape</h3>
-        <p>Grass Textured Ground with Red Sphere and Blue Box</p>
+        <p>Grass Textured Ground with Flowing River</p>
         <h4>Camera Controls:</h4>
         <ul style="padding-left: 20px; margin-bottom: 0;">
             <li>Left Mouse: Rotate camera</li>

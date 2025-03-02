@@ -17,8 +17,8 @@ export function createRiver(scene, terrain) {
         // Add water animation
         animateWater(scene, waterMaterial);
         
-        // Add water sound
-        addWaterSound(scene, riverPath);
+        // Disable water sound due to missing or corrupted audio file
+        // addWaterSound(scene, riverPath);
         
         console.log("River created successfully");
         return river;
@@ -138,25 +138,46 @@ function animateWater(scene, waterMaterial) {
 // Add water sound
 function addWaterSound(scene, riverPath) {
     try {
-        // Create water sound
+        console.log("Attempting to load water sound...");
+        
+        // Check if the audio file exists first
+        const xhr = new XMLHttpRequest();
+        xhr.open('HEAD', "textures/water_flow.mp3", false);
+        try {
+            xhr.send();
+            if (xhr.status >= 400) {
+                console.warn("Water sound file not found, skipping audio");
+                return null;
+            }
+        } catch (e) {
+            console.warn("Error checking water sound file:", e);
+            return null;
+        }
+        
+        // Create water sound with more robust error handling
         const waterSound = new BABYLON.Sound(
             "water", 
             "textures/water_flow.mp3", 
             scene, 
-            null, 
+            function() {
+                console.log("Water sound loaded successfully");
+                
+                // Position water sound at the middle of the river
+                const middlePoint = riverPath[Math.floor(riverPath.length / 2)];
+                waterSound.setPosition(new BABYLON.Vector3(middlePoint.x, 0.5, middlePoint.z));
+                
+                // Start playing only after successful load
+                waterSound.play();
+            }, 
             {
                 loop: true,
-                autoplay: true,
+                autoplay: false, // Don't autoplay, we'll play after successful load
                 volume: 0.3,
                 spatialSound: true,
                 distanceModel: "exponential",
                 rolloffFactor: 2
             }
         );
-        
-        // Position water sound at the middle of the river
-        const middlePoint = riverPath[Math.floor(riverPath.length / 2)];
-        waterSound.setPosition(new BABYLON.Vector3(middlePoint.x, 0.5, middlePoint.z));
         
         return waterSound;
     } catch (e) {
