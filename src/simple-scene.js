@@ -152,7 +152,7 @@ export function createSimpleScene(engine) {
     
     // Create a Skyrim-style Nordic cabin
     console.log("Adding Skyrim-style Nordic cabin");
-    const nordicCabin = createNordicCabin(scene, ground);
+    const nordicCabin = createNordicCabin(scene, ground, "cabin_1");
     
     // Make the cabin cast shadows
     if (nordicCabin && nordicCabin.getChildMeshes) {

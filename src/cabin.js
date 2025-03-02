@@ -1,11 +1,14 @@
 import * as BABYLON from '@babylonjs/core';
 
-export function createNordicCabin(scene, ground) {
-    console.log("Creating Skyrim-style Nordic cabin");
+export function createNordicCabin(scene, ground, id = "cabin_1") {
+    console.log(`Creating Skyrim-style Nordic cabin with ID: ${id}`);
     
     try {
         // Create a parent mesh to hold all cabin components
-        const cabinParent = new BABYLON.Mesh("nordicCabin", scene);
+        const cabinParent = new BABYLON.Mesh(`nordicCabin_${id}`, scene);
+        
+        // Add ID as a property for easy access
+        cabinParent.cabinId = id;
         
         // Cabin parameters
         const cabinPosition = new BABYLON.Vector3(15, 0, -35); // Position behind and to the right of the wall
