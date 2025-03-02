@@ -53,18 +53,14 @@ A 3D landscape visualization project built with Babylon.js featuring a realistic
 
 5. Open your browser and navigate to `http://localhost:8080`
 
-## Controls
+## Camera Controls
 
-- **WASD**: Move the camera
-- **Mouse**: Look around
-- **Shift**: Speed boost
-- **Space**: Jump
-- **G**: Toggle gravity
-- **F**: Fly mode (move up)
-- **C**: Crouch (move down)
-- **R**: Reset camera position
-- **I**: Toggle position indicator
-- **Mouse Wheel**: Adjust camera height
+- **Left Mouse Button**: Rotate camera around target
+- **Right Mouse Button**: Pan camera
+- **Mouse Wheel**: Zoom in/out
+- **WASD**: Pan camera position
+- **Q/E**: Adjust camera height
+- **R**: Reset camera to default position
 
 ## Project Structure
 
