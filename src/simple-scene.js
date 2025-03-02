@@ -4,6 +4,8 @@ import { DayNightCycle } from './day-night-cycle';
 import { TerrainGenerator } from './terrain';
 import { createLavenderPlant, makeDraggable as makeLavenderDraggable, savePosition as saveLavenderPosition, makeGroupDraggable as makeGroupLavenderDraggable } from './lavender';
 import { createDandelionPlant, makeDraggable as makeDandelionDraggable, savePosition as saveDandelionPosition, makeGroupDraggable as makeGroupDandelionDraggable } from './dandelion';
+import { createBush, makeDraggable as makeBushDraggable, savePosition as saveBushPosition, makeGroupDraggable as makeGroupBushDraggable } from './bush';
+import { createTree, makeDraggable as makeTreeDraggable, savePosition as saveTreePosition, makeGroupDraggable as makeGroupTreeDraggable } from './tree';
 
 export async function createSimpleScene(engine) {
     console.log("Creating scene with grass textured ground");
@@ -169,6 +171,28 @@ export async function createSimpleScene(engine) {
         }
     }
     
+    // Create bush plants
+    console.log("Adding bushes");
+    const bushes = [];
+    for (let i = 1; i <= 15; i++) {
+        const bush = createBush(scene, ground, i);
+        if (bush) {
+            bushes.push(bush);
+            dayNightCycle.addShadowCaster(bush);
+        }
+    }
+    
+    // Create trees
+    console.log("Adding trees");
+    const trees = [];
+    for (let i = 1; i <= 10; i++) {
+        const tree = createTree(scene, ground, i);
+        if (tree) {
+            trees.push(tree);
+            dayNightCycle.addShadowCaster(tree);
+        }
+    }
+    
     // Get the dynamic lighting system's shadow generator
     const dynamicLighting = dayNightCycle.getDynamicLighting();
     if (dynamicLighting) {
@@ -219,7 +243,29 @@ export async function createSimpleScene(engine) {
                 <button id="viewDandelionBtn" style="padding: 5px;">View</button>
             </div>
             <button id="toggleDandelionDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Dandelion Drag</button>
-            <button id="saveDandelionPosBtn" style="width: 100%; padding: 5px;">Save Dandelion Position</button>
+            <button id="saveDandelionPosBtn" style="width: 100%; margin-bottom: 15px; padding: 5px;">Save Dandelion Position</button>
+            
+            <h5 style="margin-top: 15px; margin-bottom: 5px;">Bush Controls:</h5>
+            <div style="display: flex; margin-bottom: 5px;">
+                <select id="bushSelect" style="flex-grow: 1; margin-right: 5px; padding: 5px;">
+                    <option value="all">All Bushes</option>
+                    ${Array.from({length: 15}, (_, i) => `<option value="${i+1}">Bush ${i+1}</option>`).join('')}
+                </select>
+                <button id="viewBushBtn" style="padding: 5px;">View</button>
+            </div>
+            <button id="toggleBushDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Bush Drag</button>
+            <button id="saveBushPosBtn" style="width: 100%; margin-bottom: 15px; padding: 5px;">Save Bush Position</button>
+            
+            <h5 style="margin-top: 15px; margin-bottom: 5px;">Tree Controls:</h5>
+            <div style="display: flex; margin-bottom: 5px;">
+                <select id="treeSelect" style="flex-grow: 1; margin-right: 5px; padding: 5px;">
+                    <option value="all">All Trees</option>
+                    ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">Tree ${i+1}</option>`).join('')}
+                </select>
+                <button id="viewTreeBtn" style="padding: 5px;">View</button>
+            </div>
+            <button id="toggleTreeDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Tree Drag</button>
+            <button id="saveTreePosBtn" style="width: 100%; padding: 5px;">Save Tree Position</button>
         </div>
     `;
     document.body.appendChild(sceneControls);
@@ -256,11 +302,17 @@ export async function createSimpleScene(engine) {
     let cabinDragEnabled = false;
     let lavenderDragEnabled = false;
     let dandelionDragEnabled = false;
+    let bushDragEnabled = false;
+    let treeDragEnabled = false;
     let cabinDragBehavior = null;
     let lavenderDragBehaviors = [];
     let dandelionDragBehaviors = [];
+    let bushDragBehaviors = [];
+    let treeDragBehaviors = [];
     let selectedLavender = "all";
     let selectedDandelion = "all";
+    let selectedBush = "all";
+    let selectedTree = "all";
     
     // Wait for DOM to be ready
     setTimeout(() => {
@@ -276,6 +328,14 @@ export async function createSimpleScene(engine) {
         const viewDandelionBtn = document.getElementById("viewDandelionBtn");
         const toggleDandelionDragBtn = document.getElementById("toggleDandelionDragBtn");
         const saveDandelionPosBtn = document.getElementById("saveDandelionPosBtn");
+        const bushSelect = document.getElementById("bushSelect");
+        const viewBushBtn = document.getElementById("viewBushBtn");
+        const toggleBushDragBtn = document.getElementById("toggleBushDragBtn");
+        const saveBushPosBtn = document.getElementById("saveBushPosBtn");
+        const treeSelect = document.getElementById("treeSelect");
+        const viewTreeBtn = document.getElementById("viewTreeBtn");
+        const toggleTreeDragBtn = document.getElementById("toggleTreeDragBtn");
+        const saveTreePosBtn = document.getElementById("saveTreePosBtn");
         
         if (viewMountainsBtn) {
             viewMountainsBtn.addEventListener("click", () => {
@@ -420,7 +480,7 @@ export async function createSimpleScene(engine) {
                         // Make all plants draggable
                         lavenderDragBehaviors = [];
                         lavenderPlants.forEach(plant => {
-                            const behavior = makePlantDraggable(plant, scene, ground);
+                            const behavior = makeLavenderDraggable(plant, scene, ground);
                             if (behavior) {
                                 lavenderDragBehaviors.push({ plant, behavior });
                             }
@@ -430,7 +490,7 @@ export async function createSimpleScene(engine) {
                         const plantIndex = parseInt(selectedLavender) - 1;
                         if (plantIndex >= 0 && plantIndex < lavenderPlants.length) {
                             const plant = lavenderPlants[plantIndex];
-                            const behavior = makePlantDraggable(plant, scene, ground);
+                            const behavior = makeLavenderDraggable(plant, scene, ground);
                             if (behavior) {
                                 lavenderDragBehaviors = [{ plant, behavior }];
                             }
@@ -619,6 +679,276 @@ export async function createSimpleScene(engine) {
                 savedMsg.textContent = selectedDandelion === "all" 
                     ? "All dandelion positions saved!" 
                     : `Dandelion ${selectedDandelion} position saved!`;
+                document.body.appendChild(savedMsg);
+                
+                // Remove message after 2 seconds
+                setTimeout(() => {
+                    document.body.removeChild(savedMsg);
+                }, 2000);
+            });
+        }
+        
+        // Bush selection
+        if (bushSelect) {
+            bushSelect.addEventListener("change", (event) => {
+                selectedBush = event.target.value;
+            });
+        }
+        
+        // View selected bush
+        if (viewBushBtn) {
+            viewBushBtn.addEventListener("click", () => {
+                if (selectedBush === "all") {
+                    // View all bushes - center camera on a random bush
+                    const randomIndex = Math.floor(Math.random() * bushes.length);
+                    const randomBush = bushes[randomIndex];
+                    
+                    camera.alpha = Math.PI / 4; // 45 degrees
+                    camera.beta = Math.PI / 4;  // 45 degrees
+                    camera.radius = 20;
+                    camera.target = new BABYLON.Vector3(
+                        randomBush.position.x,
+                        randomBush.position.y + 1,
+                        randomBush.position.z
+                    );
+                } else {
+                    // View specific bush
+                    const bushIndex = parseInt(selectedBush) - 1;
+                    if (bushIndex >= 0 && bushIndex < bushes.length) {
+                        const bush = bushes[bushIndex];
+                        
+                        camera.alpha = Math.PI / 4; // 45 degrees
+                        camera.beta = Math.PI / 4;  // 45 degrees
+                        camera.radius = 10;
+                        camera.target = new BABYLON.Vector3(
+                            bush.position.x,
+                            bush.position.y + 1,
+                            bush.position.z
+                        );
+                        
+                        // Highlight the selected bush
+                        const highlightLayer = new BABYLON.HighlightLayer("highlightLayer", scene);
+                        highlightLayer.addMesh(bush, BABYLON.Color3.Green());
+                        
+                        // Remove highlight after 2 seconds
+                        setTimeout(() => {
+                            highlightLayer.dispose();
+                        }, 2000);
+                    }
+                }
+            });
+        }
+        
+        // Toggle bush drag mode
+        if (toggleBushDragBtn) {
+            toggleBushDragBtn.addEventListener("click", () => {
+                bushDragEnabled = !bushDragEnabled;
+                
+                if (bushDragEnabled) {
+                    // Enable drag behavior for selected bushes
+                    if (selectedBush === "all") {
+                        // Make all bushes draggable
+                        bushDragBehaviors = [];
+                        bushes.forEach(bush => {
+                            const behavior = makeBushDraggable(bush, scene, ground);
+                            if (behavior) {
+                                bushDragBehaviors.push({ bush, behavior });
+                            }
+                        });
+                    } else {
+                        // Make only the selected bush draggable
+                        const bushIndex = parseInt(selectedBush) - 1;
+                        if (bushIndex >= 0 && bushIndex < bushes.length) {
+                            const bush = bushes[bushIndex];
+                            const behavior = makeBushDraggable(bush, scene, ground);
+                            if (behavior) {
+                                bushDragBehaviors = [{ bush, behavior }];
+                            }
+                        }
+                    }
+                    
+                    toggleBushDragBtn.textContent = "Disable Bush Drag";
+                    toggleBushDragBtn.style.backgroundColor = "#4CAF50"; // Green color
+                } else {
+                    // Disable drag behaviors
+                    bushDragBehaviors.forEach(item => {
+                        item.bush.removeBehavior(item.behavior);
+                    });
+                    bushDragBehaviors = [];
+                    
+                    toggleBushDragBtn.textContent = "Enable Bush Drag";
+                    toggleBushDragBtn.style.backgroundColor = "";
+                }
+            });
+        }
+        
+        // Save bush positions
+        if (saveBushPosBtn) {
+            saveBushPosBtn.addEventListener("click", () => {
+                // Save positions for selected bushes
+                if (selectedBush === "all") {
+                    // Save all bushes
+                    bushes.forEach(bush => {
+                        saveBushPosition(bush);
+                    });
+                } else {
+                    // Save only the selected bush
+                    const bushIndex = parseInt(selectedBush) - 1;
+                    if (bushIndex >= 0 && bushIndex < bushes.length) {
+                        saveBushPosition(bushes[bushIndex]);
+                    }
+                }
+                
+                // Show confirmation
+                const savedMsg = document.createElement("div");
+                savedMsg.style.position = "absolute";
+                savedMsg.style.top = "50%";
+                savedMsg.style.left = "50%";
+                savedMsg.style.transform = "translate(-50%, -50%)";
+                savedMsg.style.color = "white";
+                savedMsg.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+                savedMsg.style.padding = "20px";
+                savedMsg.style.fontFamily = "monospace";
+                savedMsg.style.zIndex = "200";
+                savedMsg.style.borderRadius = "5px";
+                savedMsg.textContent = selectedBush === "all" 
+                    ? "All bush positions saved!" 
+                    : `Bush ${selectedBush} position saved!`;
+                document.body.appendChild(savedMsg);
+                
+                // Remove message after 2 seconds
+                setTimeout(() => {
+                    document.body.removeChild(savedMsg);
+                }, 2000);
+            });
+        }
+        
+        // Tree selection
+        if (treeSelect) {
+            treeSelect.addEventListener("change", (event) => {
+                selectedTree = event.target.value;
+            });
+        }
+        
+        // View selected tree
+        if (viewTreeBtn) {
+            viewTreeBtn.addEventListener("click", () => {
+                if (selectedTree === "all") {
+                    // View all trees - center camera on a random tree
+                    const randomIndex = Math.floor(Math.random() * trees.length);
+                    const randomTree = trees[randomIndex];
+                    
+                    camera.alpha = Math.PI / 4; // 45 degrees
+                    camera.beta = Math.PI / 4;  // 45 degrees
+                    camera.radius = 30; // Trees are taller, so use a larger radius
+                    camera.target = new BABYLON.Vector3(
+                        randomTree.position.x,
+                        randomTree.position.y + 3, // Trees are taller, so target higher
+                        randomTree.position.z
+                    );
+                } else {
+                    // View specific tree
+                    const treeIndex = parseInt(selectedTree) - 1;
+                    if (treeIndex >= 0 && treeIndex < trees.length) {
+                        const tree = trees[treeIndex];
+                        
+                        camera.alpha = Math.PI / 4; // 45 degrees
+                        camera.beta = Math.PI / 4;  // 45 degrees
+                        camera.radius = 20; // Trees are taller, so use a larger radius
+                        camera.target = new BABYLON.Vector3(
+                            tree.position.x,
+                            tree.position.y + 3, // Trees are taller, so target higher
+                            tree.position.z
+                        );
+                        
+                        // Highlight the selected tree
+                        const highlightLayer = new BABYLON.HighlightLayer("highlightLayer", scene);
+                        highlightLayer.addMesh(tree, BABYLON.Color3.Teal()); // Teal color for trees
+                        
+                        // Remove highlight after 2 seconds
+                        setTimeout(() => {
+                            highlightLayer.dispose();
+                        }, 2000);
+                    }
+                }
+            });
+        }
+        
+        // Toggle tree drag mode
+        if (toggleTreeDragBtn) {
+            toggleTreeDragBtn.addEventListener("click", () => {
+                treeDragEnabled = !treeDragEnabled;
+                
+                if (treeDragEnabled) {
+                    // Enable drag behavior for selected trees
+                    if (selectedTree === "all") {
+                        // Make all trees draggable
+                        treeDragBehaviors = [];
+                        trees.forEach(tree => {
+                            const behavior = makeTreeDraggable(tree, scene, ground);
+                            if (behavior) {
+                                treeDragBehaviors.push({ tree, behavior });
+                            }
+                        });
+                    } else {
+                        // Make only the selected tree draggable
+                        const treeIndex = parseInt(selectedTree) - 1;
+                        if (treeIndex >= 0 && treeIndex < trees.length) {
+                            const tree = trees[treeIndex];
+                            const behavior = makeTreeDraggable(tree, scene, ground);
+                            if (behavior) {
+                                treeDragBehaviors = [{ tree, behavior }];
+                            }
+                        }
+                    }
+                    
+                    toggleTreeDragBtn.textContent = "Disable Tree Drag";
+                    toggleTreeDragBtn.style.backgroundColor = "#008080"; // Teal color for trees
+                } else {
+                    // Disable drag behaviors
+                    treeDragBehaviors.forEach(item => {
+                        item.tree.removeBehavior(item.behavior);
+                    });
+                    treeDragBehaviors = [];
+                    
+                    toggleTreeDragBtn.textContent = "Enable Tree Drag";
+                    toggleTreeDragBtn.style.backgroundColor = "";
+                }
+            });
+        }
+        
+        // Save tree positions
+        if (saveTreePosBtn) {
+            saveTreePosBtn.addEventListener("click", () => {
+                // Save positions for selected trees
+                if (selectedTree === "all") {
+                    // Save all trees
+                    trees.forEach(tree => {
+                        saveTreePosition(tree);
+                    });
+                } else {
+                    // Save only the selected tree
+                    const treeIndex = parseInt(selectedTree) - 1;
+                    if (treeIndex >= 0 && treeIndex < trees.length) {
+                        saveTreePosition(trees[treeIndex]);
+                    }
+                }
+                
+                // Show confirmation
+                const savedMsg = document.createElement("div");
+                savedMsg.style.position = "absolute";
+                savedMsg.style.top = "50%";
+                savedMsg.style.left = "50%";
+                savedMsg.style.transform = "translate(-50%, -50%)";
+                savedMsg.style.color = "white";
+                savedMsg.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+                savedMsg.style.padding = "20px";
+                savedMsg.style.fontFamily = "monospace";
+                savedMsg.style.zIndex = "200";
+                savedMsg.style.borderRadius = "5px";
+                savedMsg.textContent = selectedTree === "all" 
+                    ? "All tree positions saved!" 
+                    : `Tree ${selectedTree} position saved!`;
                 document.body.appendChild(savedMsg);
                 
                 // Remove message after 2 seconds
