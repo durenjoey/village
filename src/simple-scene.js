@@ -1,5 +1,6 @@
 import * as BABYLON from '@babylonjs/core';
-import { createRiver } from './river';
+import { createStoneWall } from './wall';
+import { createNordicCabin } from './cabin';
 
 export function createSimpleScene(engine) {
     console.log("Creating scene with grass textured ground");
@@ -11,10 +12,10 @@ export function createSimpleScene(engine) {
     // Add an ArcRotateCamera for easier panning and movement
     const camera = new BABYLON.ArcRotateCamera(
         "arcCamera", 
-        -Math.PI / 2, // Alpha (rotation around Y axis)
-        Math.PI / 3,  // Beta (rotation around X axis)
-        50,           // Radius (distance from target) - increased for better landscape view
-        new BABYLON.Vector3(0, 0, 0), // Target position
+        0, // Alpha (rotation around Y axis) - looking directly at the wall
+        Math.PI / 4,  // Beta (rotation around X axis) - slightly from above
+        40,           // Radius (distance from target)
+        new BABYLON.Vector3(0, 3, -20), // Target position - centered on the wall at gate height
         scene
     );
     
@@ -64,19 +65,40 @@ export function createSimpleScene(engine) {
                 camera.position.y += speed;
             }
             
-            // R key to reset camera
+            // R key to reset camera to view the wall
             if (kbInfo.event.keyCode === 82) { // R key
-                camera.alpha = -Math.PI / 2;
-                camera.beta = Math.PI / 3;
-                camera.radius = 50; // Match the initial radius
-                camera.target = new BABYLON.Vector3(0, 0, 0);
+                camera.alpha = 0;
+                camera.beta = Math.PI / 4;
+                camera.radius = 40;
+                camera.target = new BABYLON.Vector3(0, 3, -20);
+            }
+            
+            // C key to view the cabin
+            if (kbInfo.event.keyCode === 67) { // C key
+                camera.alpha = Math.PI / 6; // Slight angle for better view
+                camera.beta = Math.PI / 4;
+                camera.radius = 30;
+                camera.target = new BABYLON.Vector3(15, 3, -35); // Cabin position
             }
         }
     });
     
-    // Add a light
-    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-    light.intensity = 0.7;
+    // Add lighting
+    // Hemispheric light for ambient illumination
+    const hemiLight = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0, 1, 0), scene);
+    hemiLight.intensity = 0.6;
+    hemiLight.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2); // Darker ground reflection
+    
+    // Directional light to create shadows and highlight the wall
+    const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(0.5, -0.5, 0.5), scene);
+    dirLight.intensity = 0.8;
+    dirLight.position = new BABYLON.Vector3(-30, 20, -10);
+    
+    // Enable shadows
+    const shadowGenerator = new BABYLON.ShadowGenerator(1024, dirLight);
+    shadowGenerator.useBlurExponentialShadowMap = true;
+    shadowGenerator.blurScale = 2;
+    shadowGenerator.setDarkness(0.3);
     
     // Create a larger ground with grass texture to accommodate the river
     const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 200, height: 200}, scene);
@@ -129,29 +151,36 @@ export function createSimpleScene(engine) {
     
     ground.material = groundMaterial;
     
-    // Create a river that runs across the landscape
-    console.log("Adding river to the landscape");
-    const river = createRiver(scene, ground);
+    // Create a stone wall with gate
+    console.log("Adding stone wall with gate");
+    const stoneWall = createStoneWall(scene, ground);
     
-    // Add a simple sphere to verify rendering
-    const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2}, scene);
-    sphere.position.y = 1;
-    const sphereMaterial = new BABYLON.StandardMaterial("sphereMaterial", scene);
-    sphereMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0); // Red color
-    sphere.material = sphereMaterial;
+    // Make the wall cast shadows
+    if (stoneWall && stoneWall.getChildMeshes) {
+        const wallMeshes = stoneWall.getChildMeshes();
+        wallMeshes.forEach(mesh => {
+            shadowGenerator.addShadowCaster(mesh);
+        });
+    } else if (stoneWall) {
+        shadowGenerator.addShadowCaster(stoneWall);
+    }
     
-    // Add a simple box to verify rendering
-    const box = BABYLON.MeshBuilder.CreateBox("box", {size: 2}, scene);
-    box.position = new BABYLON.Vector3(3, 1, 0);
-    const boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
-    boxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1); // Blue color
-    box.material = boxMaterial;
+    // Create a Skyrim-style Nordic cabin
+    console.log("Adding Skyrim-style Nordic cabin");
+    const nordicCabin = createNordicCabin(scene, ground);
     
-    // Add animation to verify the scene is running
-    scene.registerBeforeRender(() => {
-        sphere.rotation.y += 0.01;
-        box.rotation.y -= 0.01;
-    });
+    // Make the cabin cast shadows
+    if (nordicCabin && nordicCabin.getChildMeshes) {
+        const cabinMeshes = nordicCabin.getChildMeshes();
+        cabinMeshes.forEach(mesh => {
+            shadowGenerator.addShadowCaster(mesh);
+        });
+    } else if (nordicCabin) {
+        shadowGenerator.addShadowCaster(nordicCabin);
+    }
+    
+    // Make the ground receive shadows
+    ground.receiveShadows = true;
     
     // Add debug info
     const debugText = document.createElement("div");
@@ -165,7 +194,7 @@ export function createSimpleScene(engine) {
     debugText.style.zIndex = "100";
     debugText.innerHTML = `
         <h3 style="margin-top: 0;">Babylon.js Landscape</h3>
-        <p>Grass Textured Ground with Flowing River</p>
+        <p>Skyrim-Inspired Scene with Stone Wall and Nordic Cabin</p>
         <h4>Camera Controls:</h4>
         <ul style="padding-left: 20px; margin-bottom: 0;">
             <li>Left Mouse: Rotate camera</li>
@@ -173,7 +202,8 @@ export function createSimpleScene(engine) {
             <li>Mouse Wheel: Zoom in/out</li>
             <li>WASD: Pan camera position</li>
             <li>Q/E: Adjust height</li>
-            <li>R: Reset camera</li>
+            <li>R: View the wall</li>
+            <li>C: View the cabin</li>
         </ul>
     `;
     document.body.appendChild(debugText);
