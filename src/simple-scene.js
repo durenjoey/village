@@ -2,7 +2,8 @@ import * as BABYLON from '@babylonjs/core';
 import { createNordicCabin, makeDraggable as makeCabinDraggable, savePosition as saveCabinPosition, loadSavedPosition as loadCabinPosition } from './cabin';
 import { DayNightCycle } from './day-night-cycle';
 import { TerrainGenerator } from './terrain';
-import { createLavenderPlant, makeDraggable as makePlantDraggable, savePosition as savePlantPosition, makeGroupDraggable } from './lavender';
+import { createLavenderPlant, makeDraggable as makeLavenderDraggable, savePosition as saveLavenderPosition, makeGroupDraggable as makeGroupLavenderDraggable } from './lavender';
+import { createDandelionPlant, makeDraggable as makeDandelionDraggable, savePosition as saveDandelionPosition, makeGroupDraggable as makeGroupDandelionDraggable } from './dandelion';
 
 export async function createSimpleScene(engine) {
     console.log("Creating scene with grass textured ground");
@@ -157,6 +158,17 @@ export async function createSimpleScene(engine) {
         }
     }
     
+    // Create dandelion plants
+    console.log("Adding dandelion plants");
+    const dandelionPlants = [];
+    for (let i = 1; i <= 20; i++) {
+        const plant = createDandelionPlant(scene, ground, i);
+        if (plant) {
+            dandelionPlants.push(plant);
+            dayNightCycle.addShadowCaster(plant);
+        }
+    }
+    
     // Get the dynamic lighting system's shadow generator
     const dynamicLighting = dayNightCycle.getDynamicLighting();
     if (dynamicLighting) {
@@ -196,7 +208,18 @@ export async function createSimpleScene(engine) {
                 <button id="viewLavenderBtn" style="padding: 5px;">View</button>
             </div>
             <button id="toggleLavenderDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Lavender Drag</button>
-            <button id="saveLavenderPosBtn" style="width: 100%; padding: 5px;">Save Lavender Position</button>
+            <button id="saveLavenderPosBtn" style="width: 100%; margin-bottom: 15px; padding: 5px;">Save Lavender Position</button>
+            
+            <h5 style="margin-top: 15px; margin-bottom: 5px;">Dandelion Controls:</h5>
+            <div style="display: flex; margin-bottom: 5px;">
+                <select id="dandelionSelect" style="flex-grow: 1; margin-right: 5px; padding: 5px;">
+                    <option value="all">All Plants</option>
+                    ${Array.from({length: 20}, (_, i) => `<option value="${i+1}">Dandelion ${i+1}</option>`).join('')}
+                </select>
+                <button id="viewDandelionBtn" style="padding: 5px;">View</button>
+            </div>
+            <button id="toggleDandelionDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Dandelion Drag</button>
+            <button id="saveDandelionPosBtn" style="width: 100%; padding: 5px;">Save Dandelion Position</button>
         </div>
     `;
     document.body.appendChild(sceneControls);
@@ -232,9 +255,12 @@ export async function createSimpleScene(engine) {
     // Add event listeners for scene controls
     let cabinDragEnabled = false;
     let lavenderDragEnabled = false;
+    let dandelionDragEnabled = false;
     let cabinDragBehavior = null;
     let lavenderDragBehaviors = [];
+    let dandelionDragBehaviors = [];
     let selectedLavender = "all";
+    let selectedDandelion = "all";
     
     // Wait for DOM to be ready
     setTimeout(() => {
@@ -246,6 +272,10 @@ export async function createSimpleScene(engine) {
         const viewLavenderBtn = document.getElementById("viewLavenderBtn");
         const toggleLavenderDragBtn = document.getElementById("toggleLavenderDragBtn");
         const saveLavenderPosBtn = document.getElementById("saveLavenderPosBtn");
+        const dandelionSelect = document.getElementById("dandelionSelect");
+        const viewDandelionBtn = document.getElementById("viewDandelionBtn");
+        const toggleDandelionDragBtn = document.getElementById("toggleDandelionDragBtn");
+        const saveDandelionPosBtn = document.getElementById("saveDandelionPosBtn");
         
         if (viewMountainsBtn) {
             viewMountainsBtn.addEventListener("click", () => {
@@ -429,13 +459,13 @@ export async function createSimpleScene(engine) {
                 if (selectedLavender === "all") {
                     // Save all plants
                     lavenderPlants.forEach(plant => {
-                        savePlantPosition(plant);
+                        saveLavenderPosition(plant);
                     });
                 } else {
                     // Save only the selected plant
                     const plantIndex = parseInt(selectedLavender) - 1;
                     if (plantIndex >= 0 && plantIndex < lavenderPlants.length) {
-                        savePlantPosition(lavenderPlants[plantIndex]);
+                        saveLavenderPosition(lavenderPlants[plantIndex]);
                     }
                 }
                 
@@ -454,6 +484,141 @@ export async function createSimpleScene(engine) {
                 savedMsg.textContent = selectedLavender === "all" 
                     ? "All lavender positions saved!" 
                     : `Lavender ${selectedLavender} position saved!`;
+                document.body.appendChild(savedMsg);
+                
+                // Remove message after 2 seconds
+                setTimeout(() => {
+                    document.body.removeChild(savedMsg);
+                }, 2000);
+            });
+        }
+        
+        // Dandelion plant selection
+        if (dandelionSelect) {
+            dandelionSelect.addEventListener("change", (event) => {
+                selectedDandelion = event.target.value;
+            });
+        }
+        
+        // View selected dandelion plant
+        if (viewDandelionBtn) {
+            viewDandelionBtn.addEventListener("click", () => {
+                if (selectedDandelion === "all") {
+                    // View all dandelion plants - center camera on a random plant
+                    const randomIndex = Math.floor(Math.random() * dandelionPlants.length);
+                    const randomPlant = dandelionPlants[randomIndex];
+                    
+                    camera.alpha = Math.PI / 4; // 45 degrees
+                    camera.beta = Math.PI / 4;  // 45 degrees
+                    camera.radius = 20;
+                    camera.target = new BABYLON.Vector3(
+                        randomPlant.position.x,
+                        randomPlant.position.y + 1,
+                        randomPlant.position.z
+                    );
+                } else {
+                    // View specific dandelion plant
+                    const plantIndex = parseInt(selectedDandelion) - 1;
+                    if (plantIndex >= 0 && plantIndex < dandelionPlants.length) {
+                        const plant = dandelionPlants[plantIndex];
+                        
+                        camera.alpha = Math.PI / 4; // 45 degrees
+                        camera.beta = Math.PI / 4;  // 45 degrees
+                        camera.radius = 10;
+                        camera.target = new BABYLON.Vector3(
+                            plant.position.x,
+                            plant.position.y + 1,
+                            plant.position.z
+                        );
+                        
+                        // Highlight the selected plant
+                        const highlightLayer = new BABYLON.HighlightLayer("highlightLayer", scene);
+                        highlightLayer.addMesh(plant, BABYLON.Color3.Yellow());
+                        
+                        // Remove highlight after 2 seconds
+                        setTimeout(() => {
+                            highlightLayer.dispose();
+                        }, 2000);
+                    }
+                }
+            });
+        }
+        
+        // Toggle dandelion drag mode
+        if (toggleDandelionDragBtn) {
+            toggleDandelionDragBtn.addEventListener("click", () => {
+                dandelionDragEnabled = !dandelionDragEnabled;
+                
+                if (dandelionDragEnabled) {
+                    // Enable drag behavior for selected dandelion plants
+                    if (selectedDandelion === "all") {
+                        // Make all plants draggable
+                        dandelionDragBehaviors = [];
+                        dandelionPlants.forEach(plant => {
+                            const behavior = makeDandelionDraggable(plant, scene, ground);
+                            if (behavior) {
+                                dandelionDragBehaviors.push({ plant, behavior });
+                            }
+                        });
+                    } else {
+                        // Make only the selected plant draggable
+                        const plantIndex = parseInt(selectedDandelion) - 1;
+                        if (plantIndex >= 0 && plantIndex < dandelionPlants.length) {
+                            const plant = dandelionPlants[plantIndex];
+                            const behavior = makeDandelionDraggable(plant, scene, ground);
+                            if (behavior) {
+                                dandelionDragBehaviors = [{ plant, behavior }];
+                            }
+                        }
+                    }
+                    
+                    toggleDandelionDragBtn.textContent = "Disable Dandelion Drag";
+                    toggleDandelionDragBtn.style.backgroundColor = "#f0e68c"; // Khaki color for yellow
+                } else {
+                    // Disable drag behaviors
+                    dandelionDragBehaviors.forEach(item => {
+                        item.plant.removeBehavior(item.behavior);
+                    });
+                    dandelionDragBehaviors = [];
+                    
+                    toggleDandelionDragBtn.textContent = "Enable Dandelion Drag";
+                    toggleDandelionDragBtn.style.backgroundColor = "";
+                }
+            });
+        }
+        
+        // Save dandelion positions
+        if (saveDandelionPosBtn) {
+            saveDandelionPosBtn.addEventListener("click", () => {
+                // Save positions for selected dandelion plants
+                if (selectedDandelion === "all") {
+                    // Save all plants
+                    dandelionPlants.forEach(plant => {
+                        saveDandelionPosition(plant);
+                    });
+                } else {
+                    // Save only the selected plant
+                    const plantIndex = parseInt(selectedDandelion) - 1;
+                    if (plantIndex >= 0 && plantIndex < dandelionPlants.length) {
+                        saveDandelionPosition(dandelionPlants[plantIndex]);
+                    }
+                }
+                
+                // Show confirmation
+                const savedMsg = document.createElement("div");
+                savedMsg.style.position = "absolute";
+                savedMsg.style.top = "50%";
+                savedMsg.style.left = "50%";
+                savedMsg.style.transform = "translate(-50%, -50%)";
+                savedMsg.style.color = "white";
+                savedMsg.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+                savedMsg.style.padding = "20px";
+                savedMsg.style.fontFamily = "monospace";
+                savedMsg.style.zIndex = "200";
+                savedMsg.style.borderRadius = "5px";
+                savedMsg.textContent = selectedDandelion === "all" 
+                    ? "All dandelion positions saved!" 
+                    : `Dandelion ${selectedDandelion} position saved!`;
                 document.body.appendChild(savedMsg);
                 
                 // Remove message after 2 seconds
