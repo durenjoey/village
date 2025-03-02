@@ -1,8 +1,10 @@
 import * as BABYLON from '@babylonjs/core';
-import { createNordicCabin, makeDraggable, savePosition, loadSavedPosition } from './cabin';
+import { createNordicCabin, makeDraggable as makeCabinDraggable, savePosition as saveCabinPosition, loadSavedPosition as loadCabinPosition } from './cabin';
 import { DayNightCycle } from './day-night-cycle';
+import { TerrainGenerator } from './terrain';
+import { createLavenderPlant, makeDraggable as makePlantDraggable, savePosition as savePlantPosition, makeGroupDraggable } from './lavender';
 
-export function createSimpleScene(engine) {
+export async function createSimpleScene(engine) {
     console.log("Creating scene with grass textured ground");
     
     // Create a basic scene
@@ -80,6 +82,14 @@ export function createSimpleScene(engine) {
                 camera.radius = 30;
                 camera.target = new BABYLON.Vector3(15, 3, -35); // Cabin position
             }
+            
+            // M key to view the mountains
+            if (kbInfo.event.keyCode === 77) { // M key
+                camera.alpha = 0; // Directly facing north
+                camera.beta = Math.PI / 6; // Lower angle to see mountains better
+                camera.radius = 100; // Further back to see the whole range
+                camera.target = new BABYLON.Vector3(0, 15, -80); // Look toward mountains (northern edge)
+            }
         }
     });
     
@@ -109,8 +119,9 @@ export function createSimpleScene(engine) {
     skybox.material = skyboxMaterial;
     skybox.infiniteDistance = true;
     
-    // Create a larger ground with grass texture to accommodate the river
-    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 200, height: 200}, scene);
+    // Create terrain with integrated mountains at the northern boundary
+    const terrainGenerator = new TerrainGenerator(scene);
+    const ground = await terrainGenerator.createTerrain();
     
     // Create day-night cycle
     const dayNightCycle = new DayNightCycle(scene, {
@@ -121,93 +132,74 @@ export function createSimpleScene(engine) {
     });
     
     // Initialize day-night cycle with scene objects
-    dayNightCycle.initialize(skybox, dirLight, hemiLight);
-    const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
-    
-    // Apply grass texture with error handling
-    try {
-        console.log("Loading grass texture...");
-        const grassTexture = new BABYLON.Texture("textures/grass.jpg", scene, false, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE, 
-            function() {
-                console.log("Grass texture loaded successfully");
-            }, 
-            function(error) {
-                console.error("Error loading grass texture:", error);
-                // Fallback to color if texture fails to load
-                groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.6, 0.2);
-            }
-        );
-        
-        // Set texture scaling to avoid obvious repetition
-        grassTexture.uScale = 20;
-        grassTexture.vScale = 20;
-        groundMaterial.diffuseTexture = grassTexture;
-        
-        // Apply bump texture for depth
-        console.log("Loading grass bump texture...");
-        const bumpTexture = new BABYLON.Texture("textures/grass_bump.jpg", scene, false, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE,
-            function() {
-                console.log("Grass bump texture loaded successfully");
-            },
-            function(error) {
-                console.error("Error loading grass bump texture:", error);
-            }
-        );
-        
-        bumpTexture.uScale = 20;
-        bumpTexture.vScale = 20;
-        groundMaterial.bumpTexture = bumpTexture;
-        groundMaterial.bumpTexture.level = 0.8; // Adjust bump intensity
-        
-        // Optimize material properties for grass
-        groundMaterial.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-        groundMaterial.specularPower = 64;
-        
-    } catch (e) {
-        console.error("Exception while setting up grass texture:", e);
-        // Fallback to a simple color if textures fail to load
-        groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.6, 0.2);
-    }
-    
-    ground.material = groundMaterial;
+    dayNightCycle.initialize(skybox);
     
     // Create a Skyrim-style Nordic cabin
     console.log("Adding Skyrim-style Nordic cabin");
     const nordicCabin = createNordicCabin(scene, ground, "cabin_1");
     
     // Make the cabin cast shadows
-    if (nordicCabin && nordicCabin.getChildMeshes) {
-        const cabinMeshes = nordicCabin.getChildMeshes();
-        cabinMeshes.forEach(mesh => {
-            shadowGenerator.addShadowCaster(mesh);
-        });
-    } else if (nordicCabin) {
-        shadowGenerator.addShadowCaster(nordicCabin);
+    if (nordicCabin) {
+        dayNightCycle.addShadowCaster(nordicCabin);
     }
     
     // Make the ground receive shadows
     ground.receiveShadows = true;
     
-    // Add cabin controls to the UI
-    const cabinControls = document.createElement("div");
-    cabinControls.style.position = "absolute";
-    cabinControls.style.top = "200px";
-    cabinControls.style.left = "10px";
-    cabinControls.style.color = "white";
-    cabinControls.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    cabinControls.style.padding = "10px";
-    cabinControls.style.fontFamily = "monospace";
-    cabinControls.style.zIndex = "100";
-    cabinControls.style.borderRadius = "5px";
-    cabinControls.innerHTML = `
-        <h4 style="margin-top: 0;">Cabin Controls:</h4>
+    // Create lavender plants
+    console.log("Adding lavender plants");
+    const lavenderPlants = [];
+    for (let i = 1; i <= 25; i++) {
+        const plant = createLavenderPlant(scene, ground, i);
+        if (plant) {
+            lavenderPlants.push(plant);
+            dayNightCycle.addShadowCaster(plant);
+        }
+    }
+    
+    // Get the dynamic lighting system's shadow generator
+    const dynamicLighting = dayNightCycle.getDynamicLighting();
+    if (dynamicLighting) {
+        const shadowGenerator = dynamicLighting.getShadowGenerator();
+        if (shadowGenerator) {
+            // Add any additional shadow casters here if needed
+        }
+    }
+    
+    // Add scene controls to the UI
+    const sceneControls = document.createElement("div");
+    sceneControls.style.position = "absolute";
+    sceneControls.style.top = "200px";
+    sceneControls.style.left = "10px";
+    sceneControls.style.color = "white";
+    sceneControls.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    sceneControls.style.padding = "10px";
+    sceneControls.style.fontFamily = "monospace";
+    sceneControls.style.zIndex = "100";
+    sceneControls.style.borderRadius = "5px";
+    sceneControls.innerHTML = `
+        <h4 style="margin-top: 0;">Scene Controls:</h4>
         <div style="margin-bottom: 10px;">
+            <button id="viewMountainsBtn" style="width: 100%; margin-bottom: 10px; padding: 5px;">View Mountains</button>
+            
+            <h5 style="margin-top: 15px; margin-bottom: 5px;">Cabin Controls:</h5>
             <button id="selectCabinBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Select Cabin</button>
-            <button id="toggleDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Drag Mode</button>
-            <button id="savePosBtn" style="width: 100%; padding: 5px;">Save Position</button>
+            <button id="toggleCabinDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Cabin Drag</button>
+            <button id="saveCabinPosBtn" style="width: 100%; margin-bottom: 15px; padding: 5px;">Save Cabin Position</button>
+            
+            <h5 style="margin-top: 15px; margin-bottom: 5px;">Lavender Controls:</h5>
+            <div style="display: flex; margin-bottom: 5px;">
+                <select id="lavenderSelect" style="flex-grow: 1; margin-right: 5px; padding: 5px;">
+                    <option value="all">All Plants</option>
+                    ${Array.from({length: 25}, (_, i) => `<option value="${i+1}">Lavender ${i+1}</option>`).join('')}
+                </select>
+                <button id="viewLavenderBtn" style="padding: 5px;">View</button>
+            </div>
+            <button id="toggleLavenderDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Lavender Drag</button>
+            <button id="saveLavenderPosBtn" style="width: 100%; padding: 5px;">Save Lavender Position</button>
         </div>
     `;
-    document.body.appendChild(cabinControls);
+    document.body.appendChild(sceneControls);
     
     // Add debug info
     const debugText = document.createElement("div");
@@ -232,19 +224,38 @@ export function createSimpleScene(engine) {
             <li>Q/E: Adjust height</li>
             <li>R: Reset camera position</li>
             <li>C: View the cabin</li>
+            <li>M: View the mountains</li>
         </ul>
     `;
     document.body.appendChild(debugText);
     
-    // Add event listeners for cabin controls
-    let dragEnabled = false;
+    // Add event listeners for scene controls
+    let cabinDragEnabled = false;
+    let lavenderDragEnabled = false;
     let cabinDragBehavior = null;
+    let lavenderDragBehaviors = [];
+    let selectedLavender = "all";
     
     // Wait for DOM to be ready
     setTimeout(() => {
+        const viewMountainsBtn = document.getElementById("viewMountainsBtn");
         const selectCabinBtn = document.getElementById("selectCabinBtn");
-        const toggleDragBtn = document.getElementById("toggleDragBtn");
-        const savePosBtn = document.getElementById("savePosBtn");
+        const toggleCabinDragBtn = document.getElementById("toggleCabinDragBtn");
+        const saveCabinPosBtn = document.getElementById("saveCabinPosBtn");
+        const lavenderSelect = document.getElementById("lavenderSelect");
+        const viewLavenderBtn = document.getElementById("viewLavenderBtn");
+        const toggleLavenderDragBtn = document.getElementById("toggleLavenderDragBtn");
+        const saveLavenderPosBtn = document.getElementById("saveLavenderPosBtn");
+        
+        if (viewMountainsBtn) {
+            viewMountainsBtn.addEventListener("click", () => {
+                // Focus camera on mountains
+                camera.alpha = 0; // Directly facing north
+                camera.beta = Math.PI / 6; // Lower angle to see mountains better
+                camera.radius = 100; // Further back to see the whole range
+                camera.target = new BABYLON.Vector3(0, 15, -80); // Look toward mountains
+            });
+        }
         
         if (selectCabinBtn) {
             selectCabinBtn.addEventListener("click", () => {
@@ -269,31 +280,31 @@ export function createSimpleScene(engine) {
             });
         }
         
-        if (toggleDragBtn) {
-            toggleDragBtn.addEventListener("click", () => {
-                dragEnabled = !dragEnabled;
+        if (toggleCabinDragBtn) {
+            toggleCabinDragBtn.addEventListener("click", () => {
+                cabinDragEnabled = !cabinDragEnabled;
                 
-                if (dragEnabled) {
+                if (cabinDragEnabled) {
                     // Enable drag behavior
-                    cabinDragBehavior = makeDraggable(nordicCabin, scene, ground);
-                    toggleDragBtn.textContent = "Disable Drag Mode";
-                    toggleDragBtn.style.backgroundColor = "#ff6347"; // Tomato color
+                    cabinDragBehavior = makeCabinDraggable(nordicCabin, scene, ground);
+                    toggleCabinDragBtn.textContent = "Disable Cabin Drag";
+                    toggleCabinDragBtn.style.backgroundColor = "#ff6347"; // Tomato color
                 } else {
                     // Disable drag behavior
                     if (cabinDragBehavior) {
                         nordicCabin.removeBehavior(cabinDragBehavior);
                         cabinDragBehavior = null;
                     }
-                    toggleDragBtn.textContent = "Enable Drag Mode";
-                    toggleDragBtn.style.backgroundColor = "";
+                    toggleCabinDragBtn.textContent = "Enable Cabin Drag";
+                    toggleCabinDragBtn.style.backgroundColor = "";
                 }
             });
         }
         
-        if (savePosBtn) {
-            savePosBtn.addEventListener("click", () => {
+        if (saveCabinPosBtn) {
+            saveCabinPosBtn.addEventListener("click", () => {
                 // Save cabin position
-                savePosition(nordicCabin);
+                saveCabinPosition(nordicCabin);
                 
                 // Show confirmation
                 const savedMsg = document.createElement("div");
@@ -308,6 +319,141 @@ export function createSimpleScene(engine) {
                 savedMsg.style.zIndex = "200";
                 savedMsg.style.borderRadius = "5px";
                 savedMsg.textContent = "Cabin position saved!";
+                document.body.appendChild(savedMsg);
+                
+                // Remove message after 2 seconds
+                setTimeout(() => {
+                    document.body.removeChild(savedMsg);
+                }, 2000);
+            });
+        }
+        
+        // Lavender plant selection
+        if (lavenderSelect) {
+            lavenderSelect.addEventListener("change", (event) => {
+                selectedLavender = event.target.value;
+            });
+        }
+        
+        // View selected lavender plant
+        if (viewLavenderBtn) {
+            viewLavenderBtn.addEventListener("click", () => {
+                if (selectedLavender === "all") {
+                    // View all lavender plants - center camera on a random plant
+                    const randomIndex = Math.floor(Math.random() * lavenderPlants.length);
+                    const randomPlant = lavenderPlants[randomIndex];
+                    
+                    camera.alpha = Math.PI / 4; // 45 degrees
+                    camera.beta = Math.PI / 4;  // 45 degrees
+                    camera.radius = 20;
+                    camera.target = new BABYLON.Vector3(
+                        randomPlant.position.x,
+                        randomPlant.position.y + 1,
+                        randomPlant.position.z
+                    );
+                } else {
+                    // View specific lavender plant
+                    const plantIndex = parseInt(selectedLavender) - 1;
+                    if (plantIndex >= 0 && plantIndex < lavenderPlants.length) {
+                        const plant = lavenderPlants[plantIndex];
+                        
+                        camera.alpha = Math.PI / 4; // 45 degrees
+                        camera.beta = Math.PI / 4;  // 45 degrees
+                        camera.radius = 10;
+                        camera.target = new BABYLON.Vector3(
+                            plant.position.x,
+                            plant.position.y + 1,
+                            plant.position.z
+                        );
+                        
+                        // Highlight the selected plant
+                        const highlightLayer = new BABYLON.HighlightLayer("highlightLayer", scene);
+                        highlightLayer.addMesh(plant, BABYLON.Color3.Purple());
+                        
+                        // Remove highlight after 2 seconds
+                        setTimeout(() => {
+                            highlightLayer.dispose();
+                        }, 2000);
+                    }
+                }
+            });
+        }
+        
+        // Toggle lavender drag mode
+        if (toggleLavenderDragBtn) {
+            toggleLavenderDragBtn.addEventListener("click", () => {
+                lavenderDragEnabled = !lavenderDragEnabled;
+                
+                if (lavenderDragEnabled) {
+                    // Enable drag behavior for selected lavender plants
+                    if (selectedLavender === "all") {
+                        // Make all plants draggable
+                        lavenderDragBehaviors = [];
+                        lavenderPlants.forEach(plant => {
+                            const behavior = makePlantDraggable(plant, scene, ground);
+                            if (behavior) {
+                                lavenderDragBehaviors.push({ plant, behavior });
+                            }
+                        });
+                    } else {
+                        // Make only the selected plant draggable
+                        const plantIndex = parseInt(selectedLavender) - 1;
+                        if (plantIndex >= 0 && plantIndex < lavenderPlants.length) {
+                            const plant = lavenderPlants[plantIndex];
+                            const behavior = makePlantDraggable(plant, scene, ground);
+                            if (behavior) {
+                                lavenderDragBehaviors = [{ plant, behavior }];
+                            }
+                        }
+                    }
+                    
+                    toggleLavenderDragBtn.textContent = "Disable Lavender Drag";
+                    toggleLavenderDragBtn.style.backgroundColor = "#9370db"; // Medium purple
+                } else {
+                    // Disable drag behaviors
+                    lavenderDragBehaviors.forEach(item => {
+                        item.plant.removeBehavior(item.behavior);
+                    });
+                    lavenderDragBehaviors = [];
+                    
+                    toggleLavenderDragBtn.textContent = "Enable Lavender Drag";
+                    toggleLavenderDragBtn.style.backgroundColor = "";
+                }
+            });
+        }
+        
+        // Save lavender positions
+        if (saveLavenderPosBtn) {
+            saveLavenderPosBtn.addEventListener("click", () => {
+                // Save positions for selected lavender plants
+                if (selectedLavender === "all") {
+                    // Save all plants
+                    lavenderPlants.forEach(plant => {
+                        savePlantPosition(plant);
+                    });
+                } else {
+                    // Save only the selected plant
+                    const plantIndex = parseInt(selectedLavender) - 1;
+                    if (plantIndex >= 0 && plantIndex < lavenderPlants.length) {
+                        savePlantPosition(lavenderPlants[plantIndex]);
+                    }
+                }
+                
+                // Show confirmation
+                const savedMsg = document.createElement("div");
+                savedMsg.style.position = "absolute";
+                savedMsg.style.top = "50%";
+                savedMsg.style.left = "50%";
+                savedMsg.style.transform = "translate(-50%, -50%)";
+                savedMsg.style.color = "white";
+                savedMsg.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+                savedMsg.style.padding = "20px";
+                savedMsg.style.fontFamily = "monospace";
+                savedMsg.style.zIndex = "200";
+                savedMsg.style.borderRadius = "5px";
+                savedMsg.textContent = selectedLavender === "all" 
+                    ? "All lavender positions saved!" 
+                    : `Lavender ${selectedLavender} position saved!`;
                 document.body.appendChild(savedMsg);
                 
                 // Remove message after 2 seconds

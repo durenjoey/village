@@ -42,19 +42,20 @@ window.addEventListener("error", (event) => {
 
 // Create simple scene
 console.log("Creating simple scene");
-const scene = createSimpleScene(engine);
+createSimpleScene(engine).then(scene => {
+    // Hide loading screen when scene is ready
+    scene.executeWhenReady(() => {
+        console.log("Scene is ready, hiding loading screen");
+        loadingScreen.style.display = "none";
+    });
 
-// Hide loading screen when scene is ready
-scene.executeWhenReady(() => {
-    console.log("Scene is ready, hiding loading screen");
-    loadingScreen.style.display = "none";
+    // Run the render loop
+    console.log("Starting render loop");
+    engine.runRenderLoop(() => {
+        scene.render();
+    });
 });
 
-// Run the render loop
-console.log("Starting render loop");
-engine.runRenderLoop(() => {
-    scene.render();
-});
 
 // Resize handling
 window.addEventListener("resize", () => {
