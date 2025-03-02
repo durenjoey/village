@@ -54,18 +54,18 @@ export class CelestialSystem {
             
             star.position = new BABYLON.Vector3(x, y, z);
             
-            // Create emissive material for the star
+            // Create emissive material for the star with increased brightness
             const starMaterial = new BABYLON.StandardMaterial(`starMaterial_${i}`, this.scene);
             starMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
             
-            // Add some color variation
+            // Add some color variation with enhanced brightness
             if (Math.random() > 0.8) {
                 // Some stars are slightly blue or red
                 const blueOrRed = Math.random() > 0.5;
                 if (blueOrRed) {
-                    starMaterial.emissiveColor = new BABYLON.Color3(0.8, 0.8, 1);
+                    starMaterial.emissiveColor = new BABYLON.Color3(0.9, 0.9, 1.2); // Enhanced blue
                 } else {
-                    starMaterial.emissiveColor = new BABYLON.Color3(1, 0.8, 0.8);
+                    starMaterial.emissiveColor = new BABYLON.Color3(1.2, 0.9, 0.9); // Enhanced red
                 }
             }
             
@@ -102,9 +102,9 @@ export class CelestialSystem {
             
             brightStar.position = new BABYLON.Vector3(x, y, z);
             
-            // Create emissive material with glow
+            // Create emissive material with enhanced glow
             const brightStarMaterial = new BABYLON.StandardMaterial(`brightStarMaterial_${i}`, this.scene);
-            brightStarMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            brightStarMaterial.emissiveColor = new BABYLON.Color3(1.2, 1.2, 1.2); // Brighter emissive
             brightStarMaterial.disableLighting = true;
             
             // Apply material
@@ -138,9 +138,11 @@ export class CelestialSystem {
         // Apply material
         this.sun.material = sunMaterial;
         
-        // Create sun glow
+        // Create sun glow with enhanced effect
         const sunGlow = new BABYLON.HighlightLayer("sunGlow", this.scene);
         sunGlow.addMesh(this.sun, new BABYLON.Color3(1, 0.9, 0.3));
+        sunGlow.blurHorizontalSize = 0.4; // Increased blur for more dramatic glow
+        sunGlow.blurVerticalSize = 0.4;
         
         // Create moon
         this.moon = BABYLON.MeshBuilder.CreateSphere(
@@ -158,9 +160,11 @@ export class CelestialSystem {
         // Apply material
         this.moon.material = moonMaterial;
         
-        // Create moon glow
+        // Create moon glow with enhanced effect
         const moonGlow = new BABYLON.HighlightLayer("moonGlow", this.scene);
-        moonGlow.addMesh(this.moon, new BABYLON.Color3(0.6, 0.6, 1.0));
+        moonGlow.addMesh(this.moon, new BABYLON.Color3(0.7, 0.7, 1.2)); // Brighter blue glow
+        moonGlow.blurHorizontalSize = 0.5; // Increased blur for more dramatic glow
+        moonGlow.blurVerticalSize = 0.5;
         
         // Initially position celestial bodies high in the sky
         this.sun.position = new BABYLON.Vector3(0, this.skyHeightOffset + this.skyRadius, 0);
@@ -257,9 +261,9 @@ export class CelestialSystem {
         for (const star of this.stars) {
             star.visibility = starVisibility;
             
-            // Add some twinkling effect to random stars
-            if (starVisibility > 0 && Math.random() < 0.01) {
-                const twinkle = 0.7 + Math.random() * 0.3;
+            // Enhanced twinkling effect for stars
+            if (starVisibility > 0 && Math.random() < 0.02) { // Increased chance of twinkling
+                const twinkle = 0.6 + Math.random() * 0.6; // More dramatic twinkle range
                 star.visibility = starVisibility * twinkle;
             }
         }

@@ -146,7 +146,7 @@ export class DynamicLighting {
         this.moonLight.intensity = moonIntensity;
         
         // Hemispheric light intensity (always some ambient light)
-        this.hemiLight.intensity = sunAboveHorizon ? 0.6 : 0.3;
+        this.hemiLight.intensity = sunAboveHorizon ? 0.6 : 0.15; // Reduced night ambient by 50%
         
         // Update light colors
         if (sunAboveHorizon) {
@@ -172,9 +172,9 @@ export class DynamicLighting {
             this.hemiLight.diffuse = new BABYLON.Color3(0.9, 0.9, 1.0);
             this.hemiLight.groundColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         } else {
-            // Night - cooler light
-            this.hemiLight.diffuse = new BABYLON.Color3(0.5, 0.5, 0.8);
-            this.hemiLight.groundColor = new BABYLON.Color3(0.2, 0.2, 0.3);
+            // Night - cooler light with reduced intensity
+            this.hemiLight.diffuse = new BABYLON.Color3(0.4, 0.4, 0.7); // Slightly reduced intensity
+            this.hemiLight.groundColor = new BABYLON.Color3(0.1, 0.1, 0.15); // Darker ground reflection
         }
         
         // Update shadow darkness based on time of day
@@ -185,8 +185,8 @@ export class DynamicLighting {
                 const shadowDarkness = 0.2 + Math.max(0, noonness) * 0.3;
                 this.shadowGenerator.setDarkness(shadowDarkness);
             } else {
-                // No shadows at night
-                this.shadowGenerator.setDarkness(0.1);
+                // Deeper shadows at night
+                this.shadowGenerator.setDarkness(0.4); // Increased shadow darkness
             }
         }
     }
