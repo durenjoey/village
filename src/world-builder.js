@@ -3,6 +3,7 @@ import { ref, set, get } from 'firebase/database';
 import { database } from './firebase-config';
 import { TerrainGenerator } from './terrain';
 import { WaterSystem } from './water';
+import { createStonePath } from './path';
 
 export class WorldBuilder {
     constructor(scene) {
@@ -33,6 +34,7 @@ export class WorldBuilder {
                     resolve({
                         ground: this.assets.terrain?.mesh,
                         river: this.assets.water?.mesh,
+                        path: this.assets.path,
                         trees: this.trees
                     });
                 }, 30000);
@@ -62,6 +64,11 @@ export class WorldBuilder {
                     mesh: riverMesh,
                     system: water
                 };
+                
+                // Create stone path
+                this.setLoadingStatus("Creating stone path");
+                const stonePath = createStonePath(this.scene, groundMesh);
+                this.assets.path = stonePath;
                 
                 // Try loading world objects from Firebase with timeout
                 this.setLoadingStatus("Loading world objects");
@@ -99,6 +106,7 @@ export class WorldBuilder {
                 resolve({
                     ground: groundMesh,
                     river: riverMesh,
+                    path: stonePath,
                     trees: this.trees
                 });
             } catch (error) {
@@ -109,6 +117,7 @@ export class WorldBuilder {
                 resolve({
                     ground: this.assets.terrain?.mesh,
                     river: this.assets.water?.mesh,
+                    path: this.assets.path,
                     trees: this.trees
                 });
             }
@@ -433,8 +442,8 @@ export class WorldBuilder {
                 this.scene, 
                 () => {
                     console.log("Water sound loaded successfully");
-                    // Position water sound along the river
-                    waterSound.setPosition(new BABYLON.Vector3(0, 0.5, 0));
+                    // Position water sound at the lake
+                    waterSound.setPosition(new BABYLON.Vector3(20, 0.5, -15));
                 }, 
                 {
                     loop: true,
