@@ -1,12 +1,13 @@
 import * as BABYLON from '@babylonjs/core';
 import { createNordicCabin, makeDraggable, savePosition, loadSavedPosition } from './cabin';
+import { DayNightCycle } from './day-night-cycle';
 
 export function createSimpleScene(engine) {
     console.log("Creating scene with grass textured ground");
     
     // Create a basic scene
     const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color3(0.4, 0.6, 0.9); // Sky blue color
+    scene.clearColor = new BABYLON.Color3(0.4, 0.6, 0.9); // Sky blue color (will be overridden by skybox)
     
     // Add an ArcRotateCamera for easier panning and movement
     const camera = new BABYLON.ArcRotateCamera(
@@ -88,7 +89,7 @@ export function createSimpleScene(engine) {
     hemiLight.intensity = 0.6;
     hemiLight.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2); // Darker ground reflection
     
-    // Directional light to create shadows and highlight the scene
+    // Directional light to create shadows and highlight the scene (sun)
     const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(0.5, -0.5, 0.5), scene);
     dirLight.intensity = 0.8;
     dirLight.position = new BABYLON.Vector3(-30, 20, -10);
@@ -99,8 +100,28 @@ export function createSimpleScene(engine) {
     shadowGenerator.blurScale = 2;
     shadowGenerator.setDarkness(0.3);
     
+    // Create skybox
+    const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+    const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+    skyboxMaterial.backFaceCulling = false;
+    skyboxMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.6, 0.9); // Sky blue color
+    skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+    skybox.material = skyboxMaterial;
+    skybox.infiniteDistance = true;
+    
     // Create a larger ground with grass texture to accommodate the river
     const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 200, height: 200}, scene);
+    
+    // Create day-night cycle
+    const dayNightCycle = new DayNightCycle(scene, {
+        dayStart: 5,  // Day starts at 5am
+        dayEnd: 19,   // Day ends at 7pm (19:00)
+        timeScale: 60, // 1 real second = 1 minute in game
+        initialHour: 12 // Start at noon
+    });
+    
+    // Initialize day-night cycle with scene objects
+    dayNightCycle.initialize(skybox, dirLight, hemiLight);
     const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
     
     // Apply grass texture with error handling
@@ -296,6 +317,121 @@ export function createSimpleScene(engine) {
             });
         }
     }, 1000);
+    
+    // Add day-night cycle controls to the UI
+    const timeControls = document.createElement("div");
+    timeControls.style.position = "absolute";
+    timeControls.style.bottom = "10px";
+    timeControls.style.right = "10px";
+    timeControls.style.color = "white";
+    timeControls.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    timeControls.style.padding = "10px";
+    timeControls.style.fontFamily = "monospace";
+    timeControls.style.zIndex = "100";
+    timeControls.style.borderRadius = "5px";
+    timeControls.innerHTML = `
+        <h4 style="margin-top: 0;">Time Controls:</h4>
+        <div style="margin-bottom: 10px;">
+            <button id="timeScaleBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Speed: 1x</button>
+            <button id="setTimeBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Set Time</button>
+        </div>
+    `;
+    document.body.appendChild(timeControls);
+    
+    // Add event listeners for time controls
+    setTimeout(() => {
+        const timeScaleBtn = document.getElementById("timeScaleBtn");
+        const setTimeBtn = document.getElementById("setTimeBtn");
+        
+        let currentTimeScale = 1;
+        const timeScales = [1, 5, 10, 30, 60, 120];
+        
+        if (timeScaleBtn) {
+            timeScaleBtn.addEventListener("click", () => {
+                // Cycle through time scales
+                const currentIndex = timeScales.indexOf(currentTimeScale);
+                const nextIndex = (currentIndex + 1) % timeScales.length;
+                currentTimeScale = timeScales[nextIndex];
+                
+                // Update button text
+                timeScaleBtn.textContent = `Speed: ${currentTimeScale}x`;
+                
+                // Update day-night cycle
+                dayNightCycle.setTimeScale(currentTimeScale * 60); // Convert to minutes per second
+            });
+        }
+        
+        if (setTimeBtn) {
+            setTimeBtn.addEventListener("click", () => {
+                // Create a simple time selection dialog
+                const hours = [];
+                for (let i = 0; i < 24; i++) {
+                    hours.push(i);
+                }
+                
+                // Create time selection UI
+                const timeDialog = document.createElement("div");
+                timeDialog.style.position = "absolute";
+                timeDialog.style.top = "50%";
+                timeDialog.style.left = "50%";
+                timeDialog.style.transform = "translate(-50%, -50%)";
+                timeDialog.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+                timeDialog.style.color = "white";
+                timeDialog.style.padding = "20px";
+                timeDialog.style.borderRadius = "10px";
+                timeDialog.style.zIndex = "200";
+                timeDialog.style.minWidth = "200px";
+                
+                let timeDialogHTML = `
+                    <h3>Set Time</h3>
+                    <div style="margin-bottom: 15px;">
+                        <select id="hourSelect" style="width: 100%; padding: 5px; margin-bottom: 10px;">
+                `;
+                
+                // Add hour options
+                hours.forEach(hour => {
+                    const hourStr = hour.toString().padStart(2, '0');
+                    const ampm = hour < 12 ? 'AM' : 'PM';
+                    const hour12 = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+                    const selected = hour === dayNightCycle.hour ? 'selected' : '';
+                    timeDialogHTML += `<option value="${hour}" ${selected}>${hourStr}:00 (${hour12} ${ampm})</option>`;
+                });
+                
+                timeDialogHTML += `
+                        </select>
+                        <div style="display: flex; justify-content: space-between;">
+                            <button id="cancelTimeBtn" style="padding: 5px 10px;">Cancel</button>
+                            <button id="setTimeConfirmBtn" style="padding: 5px 10px;">Set Time</button>
+                        </div>
+                    </div>
+                `;
+                
+                timeDialog.innerHTML = timeDialogHTML;
+                document.body.appendChild(timeDialog);
+                
+                // Add event listeners for dialog buttons
+                document.getElementById("cancelTimeBtn").addEventListener("click", () => {
+                    document.body.removeChild(timeDialog);
+                });
+                
+                document.getElementById("setTimeConfirmBtn").addEventListener("click", () => {
+                    const hourSelect = document.getElementById("hourSelect");
+                    const selectedHour = parseInt(hourSelect.value);
+                    
+                    // Set time in day-night cycle
+                    dayNightCycle.setTime(selectedHour, 0);
+                    
+                    // Remove dialog
+                    document.body.removeChild(timeDialog);
+                });
+            });
+        }
+    }, 1000);
+    
+    // Register the day-night cycle to update on each frame
+    scene.registerBeforeRender(() => {
+        dayNightCycle.update();
+    });
     
     console.log("Basic scene created successfully");
     return scene;
