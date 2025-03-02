@@ -785,4 +785,323 @@ function createDoor(scene, parent, position, width, length, height, material) {
         );
         
         // Create darker wood material for the door
-        const doorMaterial = material.clone("door
+        const doorMaterial = material.clone("doorMaterial");
+        doorMaterial.diffuseColor = new BABYLON.Color3(0.35, 0.25, 0.15); // Darker wood
+        
+        // Apply material
+        door.material = doorMaterial;
+        
+        // Parent to the cabin
+        door.parent = parent;
+        
+        console.log("Door created successfully");
+    } catch (error) {
+        console.error("Error creating door:", error);
+    }
+}
+
+// Create windows
+function createWindows(scene, parent, position, width, length, height, material) {
+    console.log("Creating cabin windows");
+    
+    try {
+        // Window parameters
+        const windowWidth = 1.0;
+        const windowHeight = 1.0;
+        const windowDepth = 0.1;
+        const windowY = position.y + 0.6 + (height / 2) + 0.3; // Position windows higher than center
+        
+        // Create windows on side walls
+        
+        // Left wall window
+        createSingleWindow(
+            scene, 
+            parent, 
+            new BABYLON.Vector3(
+                position.x - (width / 2) - 0.01, // Left wall with slight offset
+                windowY,
+                position.z + (length / 4) // Offset towards front
+            ),
+            windowWidth,
+            windowHeight,
+            windowDepth,
+            material,
+            Math.PI / 2 // Rotate to face left
+        );
+        
+        // Right wall window
+        createSingleWindow(
+            scene, 
+            parent, 
+            new BABYLON.Vector3(
+                position.x + (width / 2) + 0.01, // Right wall with slight offset
+                windowY,
+                position.z + (length / 4) // Offset towards front
+            ),
+            windowWidth,
+            windowHeight,
+            windowDepth,
+            material,
+            -Math.PI / 2 // Rotate to face right
+        );
+        
+        // Back wall window
+        createSingleWindow(
+            scene, 
+            parent, 
+            new BABYLON.Vector3(
+                position.x, // Center
+                windowY,
+                position.z - (length / 2) - 0.01 // Back wall with slight offset
+            ),
+            windowWidth,
+            windowHeight,
+            windowDepth,
+            material,
+            Math.PI // Rotate to face back
+        );
+        
+        console.log("Windows created successfully");
+    } catch (error) {
+        console.error("Error creating windows:", error);
+    }
+}
+
+// Create a single window
+function createSingleWindow(scene, parent, position, width, height, depth, material, rotation) {
+    console.log("Creating single window at position:", position);
+    
+    try {
+        // Create window frame
+        const windowFrame = BABYLON.MeshBuilder.CreateBox(
+            "windowFrame",
+            {
+                width: width + 0.2,
+                height: height + 0.2,
+                depth: depth + 0.1
+            },
+            scene
+        );
+        
+        // Position window frame
+        windowFrame.position = position;
+        
+        // Rotate window frame
+        windowFrame.rotation.y = rotation;
+        
+        // Apply material
+        windowFrame.material = material;
+        
+        // Parent to the cabin
+        windowFrame.parent = parent;
+        
+        // Create window glass
+        const windowGlass = BABYLON.MeshBuilder.CreatePlane(
+            "windowGlass",
+            {
+                width: width - 0.1,
+                height: height - 0.1
+            },
+            scene
+        );
+        
+        // Create glass material
+        const glassMaterial = new BABYLON.StandardMaterial("glassMaterial", scene);
+        glassMaterial.diffuseColor = new BABYLON.Color3(0.8, 0.9, 1.0);
+        glassMaterial.alpha = 0.5; // Semi-transparent
+        glassMaterial.specularColor = new BABYLON.Color3(1, 1, 1);
+        glassMaterial.specularPower = 64;
+        
+        // Apply glass material
+        windowGlass.material = glassMaterial;
+        
+        // Position glass inside the frame
+        windowGlass.position = new BABYLON.Vector3(
+            position.x,
+            position.y,
+            position.z
+        );
+        
+        // Rotate glass to match frame
+        windowGlass.rotation.y = rotation;
+        
+        // Offset glass slightly to avoid z-fighting
+        if (rotation === Math.PI / 2) {
+            windowGlass.position.x += 0.05;
+        } else if (rotation === -Math.PI / 2) {
+            windowGlass.position.x -= 0.05;
+        } else if (rotation === Math.PI) {
+            windowGlass.position.z += 0.05;
+        } else {
+            windowGlass.position.z -= 0.05;
+        }
+        
+        // Parent to the cabin
+        windowGlass.parent = parent;
+        
+        console.log("Window created successfully");
+    } catch (error) {
+        console.error("Error creating window:", error);
+    }
+}
+
+// Create wood material
+function createWoodMaterial(scene) {
+    const woodMaterial = new BABYLON.StandardMaterial("woodMaterial", scene);
+    woodMaterial.diffuseColor = new BABYLON.Color3(0.5, 0.3, 0.1); // Brown color
+    woodMaterial.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1); // Low specular
+    return woodMaterial;
+}
+
+// Create stone material
+function createStoneMaterial(scene) {
+    const stoneMaterial = new BABYLON.StandardMaterial("stoneMaterial", scene);
+    stoneMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.4, 0.4); // Gray color
+    stoneMaterial.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+    return stoneMaterial;
+}
+
+// Create roof material
+function createRoofMaterial(scene) {
+    const roofMaterial = new BABYLON.StandardMaterial("roofMaterial", scene);
+    roofMaterial.diffuseColor = new BABYLON.Color3(0.3, 0.2, 0.1); // Dark brown
+    roofMaterial.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+    return roofMaterial;
+}
+
+// Create stone details
+function createStoneDetails(scene, foundation, material) {
+    // This is a simplified version that doesn't add actual stone details
+    return foundation;
+}
+
+// Function to make a mesh draggable
+function makeDraggable(mesh, scene, ground) {
+    console.log(`Making ${mesh.name} draggable`);
+    
+    try {
+        // Create a drag behavior for XZ plane (horizontal movement only)
+        const dragBehavior = new BABYLON.PointerDragBehavior({
+            dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) // Y-axis as normal means XZ plane
+        });
+        
+        // Keep track of original position for undo functionality
+        let originalPosition = mesh.position.clone();
+        
+        // Add visual feedback when dragging starts
+        dragBehavior.onDragStartObservable.add(() => {
+            // Store the original position when drag starts
+            originalPosition = mesh.position.clone();
+            
+            // Visual feedback - slightly elevate the cabin
+            mesh.position.y += 0.5;
+            
+            // Change cursor
+            scene.getEngine().getRenderingCanvas().style.cursor = "grabbing";
+            
+            console.log(`Started dragging ${mesh.name}`);
+        });
+        
+        // Handle drag movement
+        dragBehavior.onDragObservable.add(() => {
+            // Keep the cabin at the correct height above ground
+            mesh.position.y = 0.01 + 0.5; // Original height + drag elevation
+        });
+        
+        // Handle drag end
+        dragBehavior.onDragEndObservable.add(() => {
+            // Return to normal height
+            mesh.position.y = 0.01;
+            
+            // Reset cursor
+            scene.getEngine().getRenderingCanvas().style.cursor = "default";
+            
+            // Save the new position
+            savePosition(mesh);
+            
+            console.log(`Finished dragging ${mesh.name} to position:`, mesh.position);
+        });
+        
+        // Add the behavior to the mesh
+        mesh.addBehavior(dragBehavior);
+        
+        // Add a hover effect
+        mesh.actionManager = new BABYLON.ActionManager(scene);
+        
+        // Change cursor on hover
+        mesh.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPointerOverTrigger,
+                function() {
+                    scene.getEngine().getRenderingCanvas().style.cursor = "grab";
+                }
+            )
+        );
+        
+        // Reset cursor when not hovering
+        mesh.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPointerOutTrigger,
+                function() {
+                    scene.getEngine().getRenderingCanvas().style.cursor = "default";
+                }
+            )
+        );
+        
+        console.log(`Successfully made ${mesh.name} draggable`);
+        
+        // Return the drag behavior for external control
+        return dragBehavior;
+    } catch (error) {
+        console.error(`Error making ${mesh.name} draggable:`, error);
+        return null;
+    }
+}
+
+// Function to save the position of a cabin
+function savePosition(cabin) {
+    try {
+        // Get the cabin's ID and position
+        const cabinId = cabin.cabinId;
+        const position = {
+            x: cabin.position.x,
+            y: cabin.position.y,
+            z: cabin.position.z,
+            rotation: cabin.rotation.y
+        };
+        
+        // Save to localStorage for persistence
+        const savedCabins = JSON.parse(localStorage.getItem('savedCabins') || '{}');
+        savedCabins[cabinId] = position;
+        localStorage.setItem('savedCabins', JSON.stringify(savedCabins));
+        
+        console.log(`Saved position for ${cabinId}:`, position);
+    } catch (error) {
+        console.error("Error saving cabin position:", error);
+    }
+}
+
+// Function to load saved position for a cabin
+function loadSavedPosition(cabin) {
+    try {
+        const cabinId = cabin.cabinId;
+        const savedCabins = JSON.parse(localStorage.getItem('savedCabins') || '{}');
+        
+        if (savedCabins[cabinId]) {
+            const savedPos = savedCabins[cabinId];
+            cabin.position.x = savedPos.x;
+            cabin.position.y = savedPos.y;
+            cabin.position.z = savedPos.z;
+            cabin.rotation.y = savedPos.rotation;
+            console.log(`Loaded saved position for ${cabinId}:`, savedPos);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error("Error loading saved position:", error);
+        return false;
+    }
+}
+
+// Export functions for external use
+export { makeDraggable, savePosition, loadSavedPosition };

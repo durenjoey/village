@@ -1,5 +1,5 @@
 import * as BABYLON from '@babylonjs/core';
-import { createNordicCabin } from './cabin';
+import { createNordicCabin, makeDraggable, savePosition, loadSavedPosition } from './cabin';
 
 export function createSimpleScene(engine) {
     console.log("Creating scene with grass textured ground");
@@ -167,6 +167,27 @@ export function createSimpleScene(engine) {
     // Make the ground receive shadows
     ground.receiveShadows = true;
     
+    // Add cabin controls to the UI
+    const cabinControls = document.createElement("div");
+    cabinControls.style.position = "absolute";
+    cabinControls.style.top = "200px";
+    cabinControls.style.left = "10px";
+    cabinControls.style.color = "white";
+    cabinControls.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    cabinControls.style.padding = "10px";
+    cabinControls.style.fontFamily = "monospace";
+    cabinControls.style.zIndex = "100";
+    cabinControls.style.borderRadius = "5px";
+    cabinControls.innerHTML = `
+        <h4 style="margin-top: 0;">Cabin Controls:</h4>
+        <div style="margin-bottom: 10px;">
+            <button id="selectCabinBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Select Cabin</button>
+            <button id="toggleDragBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Enable Drag Mode</button>
+            <button id="savePosBtn" style="width: 100%; padding: 5px;">Save Position</button>
+        </div>
+    `;
+    document.body.appendChild(cabinControls);
+    
     // Add debug info
     const debugText = document.createElement("div");
     debugText.style.position = "absolute";
@@ -177,6 +198,7 @@ export function createSimpleScene(engine) {
     debugText.style.padding = "10px";
     debugText.style.fontFamily = "monospace";
     debugText.style.zIndex = "100";
+    debugText.style.borderRadius = "5px";
     debugText.innerHTML = `
         <h3 style="margin-top: 0;">Babylon.js Landscape</h3>
         <p>Skyrim-Inspired Scene with Nordic Cabin</p>
@@ -192,6 +214,88 @@ export function createSimpleScene(engine) {
         </ul>
     `;
     document.body.appendChild(debugText);
+    
+    // Add event listeners for cabin controls
+    let dragEnabled = false;
+    let cabinDragBehavior = null;
+    
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        const selectCabinBtn = document.getElementById("selectCabinBtn");
+        const toggleDragBtn = document.getElementById("toggleDragBtn");
+        const savePosBtn = document.getElementById("savePosBtn");
+        
+        if (selectCabinBtn) {
+            selectCabinBtn.addEventListener("click", () => {
+                // Focus camera on cabin
+                camera.alpha = Math.PI / 6;
+                camera.beta = Math.PI / 4;
+                camera.radius = 30;
+                camera.target = new BABYLON.Vector3(
+                    nordicCabin.position.x,
+                    nordicCabin.position.y + 3,
+                    nordicCabin.position.z
+                );
+                
+                // Highlight the cabin
+                const highlightLayer = new BABYLON.HighlightLayer("highlightLayer", scene);
+                highlightLayer.addMesh(nordicCabin, BABYLON.Color3.Yellow());
+                
+                // Remove highlight after 2 seconds
+                setTimeout(() => {
+                    highlightLayer.dispose();
+                }, 2000);
+            });
+        }
+        
+        if (toggleDragBtn) {
+            toggleDragBtn.addEventListener("click", () => {
+                dragEnabled = !dragEnabled;
+                
+                if (dragEnabled) {
+                    // Enable drag behavior
+                    cabinDragBehavior = makeDraggable(nordicCabin, scene, ground);
+                    toggleDragBtn.textContent = "Disable Drag Mode";
+                    toggleDragBtn.style.backgroundColor = "#ff6347"; // Tomato color
+                } else {
+                    // Disable drag behavior
+                    if (cabinDragBehavior) {
+                        nordicCabin.removeBehavior(cabinDragBehavior);
+                        cabinDragBehavior = null;
+                    }
+                    toggleDragBtn.textContent = "Enable Drag Mode";
+                    toggleDragBtn.style.backgroundColor = "";
+                }
+            });
+        }
+        
+        if (savePosBtn) {
+            savePosBtn.addEventListener("click", () => {
+                // Save cabin position
+                savePosition(nordicCabin);
+                
+                // Show confirmation
+                const savedMsg = document.createElement("div");
+                savedMsg.style.position = "absolute";
+                savedMsg.style.top = "50%";
+                savedMsg.style.left = "50%";
+                savedMsg.style.transform = "translate(-50%, -50%)";
+                savedMsg.style.color = "white";
+                savedMsg.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+                savedMsg.style.padding = "20px";
+                savedMsg.style.fontFamily = "monospace";
+                savedMsg.style.zIndex = "200";
+                savedMsg.style.borderRadius = "5px";
+                savedMsg.textContent = "Cabin position saved!";
+                document.body.appendChild(savedMsg);
+                
+                // Remove message after 2 seconds
+                setTimeout(() => {
+                    document.body.removeChild(savedMsg);
+                }, 2000);
+            });
+        }
+    }, 1000);
     
     console.log("Basic scene created successfully");
     return scene;
