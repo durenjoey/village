@@ -31,8 +31,7 @@ export function createNordicCabin(scene, ground) {
         // Create the cabin details (door, windows, chimney, etc.)
         createDetails(scene, cabinParent, cabinPosition, cabinWidth, cabinLength, cabinHeight, woodMaterial, stoneMaterial);
         
-        // Create decorative elements
-        createDecorativeElements(scene, cabinParent, cabinPosition, cabinWidth, cabinLength, cabinHeight, woodMaterial, stoneMaterial);
+        // Removed decorative elements to simplify the cabin
         
         // Position the cabin slightly above ground to avoid z-fighting
         cabinParent.position.y = 0.01;
@@ -225,14 +224,6 @@ function createRoof(scene, parent, position, width, length, wallHeight, roofHeig
         console.log("Creating main roof structure");
         createMainRoof(scene, parent, position, width, length, wallHeight, roofHeight, material);
         
-        // Create roof shingles for more detail
-        console.log("Creating roof shingles");
-        createRoofShingles(scene, parent, position, width, length, wallHeight, roofHeight, material);
-        
-        // Add roof beams
-        console.log("Creating roof beams");
-        createRoofBeams(scene, parent, position, width, length, wallHeight, roofHeight, material);
-        
         // Add gable ends
         console.log("Creating gable ends");
         createGableEnds(scene, parent, position, width, length, wallHeight, roofHeight, material);
@@ -245,18 +236,21 @@ function createRoof(scene, parent, position, width, length, wallHeight, roofHeig
     }
 }
 
-// Create the main roof structure
+// Simple roof structure function
 function createMainRoof(scene, parent, position, width, length, wallHeight, roofHeight, material) {
     console.log("Creating main roof with params:", { width, length, wallHeight, roofHeight });
     
     try {
-        // Create a simpler roof using two boxes for the roof sides
+        // Create a simple roof using two boxes for the roof sides
         const overhang = 0.8;
         const roofThickness = 0.3;
         
         // Calculate the slope length using Pythagorean theorem
         const halfWidth = width / 2 + overhang;
         const slopeLength = Math.sqrt(halfWidth * halfWidth + roofHeight * roofHeight);
+        
+        // Calculate the angle of the roof slope
+        const roofAngle = Math.atan(roofHeight / halfWidth);
         
         // Create left roof side
         const leftRoof = BABYLON.MeshBuilder.CreateBox(
@@ -269,21 +263,15 @@ function createMainRoof(scene, parent, position, width, length, wallHeight, roof
             scene
         );
         
-        // Calculate the angle of the roof slope
-        const roofAngle = Math.atan(roofHeight / halfWidth);
-        
-        // Position and rotate left roof
+        // Position left roof
         leftRoof.position = new BABYLON.Vector3(
-            position.x - halfWidth / 2,
-            position.y + 0.6 + wallHeight + (roofHeight / 2),
+            position.x - halfWidth/2,
+            position.y + 0.6 + wallHeight + roofHeight/2,
             position.z
         );
         
         // Rotate to create the slope
         leftRoof.rotation.z = roofAngle;
-        
-        // Make sure the roof is visible
-        leftRoof.isVisible = true;
         
         // Apply material
         leftRoof.material = material;
@@ -302,18 +290,15 @@ function createMainRoof(scene, parent, position, width, length, wallHeight, roof
             scene
         );
         
-        // Position and rotate right roof
+        // Position right roof
         rightRoof.position = new BABYLON.Vector3(
-            position.x + halfWidth / 2,
-            position.y + 0.6 + wallHeight + (roofHeight / 2),
+            position.x + halfWidth/2,
+            position.y + 0.6 + wallHeight + roofHeight/2,
             position.z
         );
         
         // Rotate to create the slope (opposite angle)
         rightRoof.rotation.z = -roofAngle;
-        
-        // Make sure the roof is visible
-        rightRoof.isVisible = true;
         
         // Apply material
         rightRoof.material = material;
@@ -321,78 +306,88 @@ function createMainRoof(scene, parent, position, width, length, wallHeight, roof
         // Parent to the cabin
         rightRoof.parent = parent;
         
+        // Add a ridge cap at the top to cover any gap
+        const ridgeCap = BABYLON.MeshBuilder.CreateBox(
+            "ridgeCap",
+            {
+                width: 0.5,
+                height: 0.4,
+                depth: length + (overhang * 2)
+            },
+            scene
+        );
+        
+        ridgeCap.position = new BABYLON.Vector3(
+            position.x,
+            position.y + 0.6 + wallHeight + roofHeight - 0.2,
+            position.z
+        );
+        
+        ridgeCap.material = material;
+        ridgeCap.parent = parent;
+        
         console.log("Main roof created successfully");
-        return { leftRoof, rightRoof };
+        return { leftRoof, rightRoof, ridgeCap };
     } catch (error) {
         console.error("Error creating main roof:", error);
         return null;
     }
 }
 
-// Create roof shingles for more detail
+// FIX 6: Better roof shingles function for better performance and appearance
 function createRoofShingles(scene, parent, position, width, length, wallHeight, roofHeight, material) {
     console.log("Creating roof shingles");
     
     try {
         // Create a darker material for the shingles
         const shingleMaterial = material.clone("shingleMaterial");
-        shingleMaterial.diffuseColor = new BABYLON.Color3(0.25, 0.2, 0.15); // Darker than roof
+        shingleMaterial.diffuseColor = new BABYLON.Color3(0.25, 0.2, 0.15);
+        
+        // Instead of creating individual shingles, create shingle rows for better performance
+        const shingleRowHeight = 0.4;
+        const shingleRowsPerSide = 6;
+        const overhang = 0.8;
         
         // Calculate roof slope angle
-        const roofAngle = Math.atan(roofHeight / (width / 2));
-        console.log("Roof angle:", roofAngle * (180 / Math.PI), "degrees");
+        const roofAngle = Math.atan(roofHeight / (width/2));
+        const slopeLength = Math.sqrt(Math.pow(width/2 + overhang, 2) + Math.pow(roofHeight, 2));
         
-        // Shingle parameters - simplified for better performance
-        const shingleWidth = 0.5;
-        const shingleHeight = 0.6;
-        const shingleDepth = 0.05;
-        const shingleRows = 5; // Reduced number of rows
-        const shinglesPerRow = Math.ceil(width / shingleWidth);
-        
-        // Create shingles for both sides of the roof
-        for (let side = -1; side <= 1; side += 2) { // -1 for left side, 1 for right side
-            if (side === 0) continue; // Skip middle
+        // Create shingle rows for both sides
+        for (let side = -1; side <= 1; side += 2) {
+            if (side === 0) continue;
             
-            for (let row = 0; row < shingleRows; row++) {
-                // Calculate vertical position on the roof
-                const rowHeight = (row / shingleRows) * (width / 2) / Math.cos(roofAngle);
-                const y = rowHeight * Math.sin(roofAngle);
-                const horizontalOffset = side * rowHeight * Math.cos(roofAngle);
+            for (let row = 0; row < shingleRowsPerSide; row++) {
+                // Calculate row position along the slope
+                const rowOffset = (row + 0.5) * (slopeLength / shingleRowsPerSide);
+                const x = side * (rowOffset * Math.cos(roofAngle));
+                const y = rowOffset * Math.sin(roofAngle);
                 
-                for (let col = 0; col < shinglesPerRow; col++) {
-                    // Calculate position along the roof width
-                    const z = (col / shinglesPerRow) * length - length / 2;
-                    
-                    // Create shingle
-                    const shingle = BABYLON.MeshBuilder.CreateBox(
-                        `shingle_${side}_${row}_${col}`,
-                        {
-                            width: shingleWidth * 0.9,
-                            height: shingleDepth,
-                            depth: shingleHeight * 0.9
-                        },
-                        scene
-                    );
-                    
-                    // Position shingle on the roof
-                    shingle.position = new BABYLON.Vector3(
-                        position.x + horizontalOffset,
-                        position.y + 0.6 + wallHeight + y + shingleDepth / 2,
-                        position.z + z
-                    );
-                    
-                    // Rotate shingle to align with roof slope
-                    shingle.rotation.z = side * roofAngle;
-                    
-                    // Make sure the shingle is visible
-                    shingle.isVisible = true;
-                    
-                    // Apply material
-                    shingle.material = shingleMaterial;
-                    
-                    // Parent to the cabin
-                    shingle.parent = parent;
-                }
+                // Create shingle row
+                const shingleRow = BABYLON.MeshBuilder.CreateBox(
+                    `shingleRow_${side}_${row}`,
+                    {
+                        width: slopeLength / shingleRowsPerSide * 1.05,
+                        height: 0.05,
+                        depth: length + (overhang * 1.5)
+                    },
+                    scene
+                );
+                
+                // Position shingle row on the roof
+                shingleRow.position = new BABYLON.Vector3(
+                    position.x + x * 0.8,
+                    position.y + 0.6 + wallHeight + y - 0.2,
+                    position.z
+                );
+                
+                // Rotate shingle row to align with roof slope
+                shingleRow.rotation.z = side * roofAngle;
+                
+                // Apply material
+                shingleRow.material = shingleMaterial;
+                
+                // Parent to cabin
+                shingleRow.parent = parent;
             }
         }
         
@@ -402,37 +397,37 @@ function createRoofShingles(scene, parent, position, width, length, wallHeight, 
     }
 }
 
-// Create gable ends for the roof
+// FIX 5: Better gable ends function
 function createGableEnds(scene, parent, position, width, length, wallHeight, roofHeight, material) {
     console.log("Creating gable ends");
     
     try {
-        // Create front gable end using a simple triangle
-        const frontGable = BABYLON.MeshBuilder.CreateDisc(
+        // Create a custom shape for the gable instead of a disc
+        const gablePoints = [
+            new BABYLON.Vector3(-width/2, 0, 0),
+            new BABYLON.Vector3(width/2, 0, 0),
+            new BABYLON.Vector3(0, roofHeight, 0)
+        ];
+        
+        // Create front gable
+        const frontGable = BABYLON.MeshBuilder.CreatePolygon(
             "frontGable",
             {
-                radius: width / 2,
-                tessellation: 3, // Triangle
+                shape: gablePoints,
                 sideOrientation: BABYLON.Mesh.DOUBLESIDE
             },
             scene
         );
         
-        // Scale to make it a proper triangle
-        frontGable.scaling.y = roofHeight / (width / 2);
-        
         // Position front gable
         frontGable.position = new BABYLON.Vector3(
             position.x,
-            position.y + 0.6 + wallHeight + (roofHeight / 2),
-            position.z + length / 2 + 0.01 // Slightly in front of the wall
+            position.y + 0.6 + wallHeight,
+            position.z + length/2 + 0.05
         );
         
         // Rotate to make it vertical
-        frontGable.rotation.x = Math.PI / 2;
-        
-        // Make sure the gable is visible
-        frontGable.isVisible = true;
+        frontGable.rotation.x = Math.PI/2;
         
         // Apply material
         frontGable.material = material;
@@ -440,21 +435,14 @@ function createGableEnds(scene, parent, position, width, length, wallHeight, roo
         // Parent to the cabin
         frontGable.parent = parent;
         
-        // Create back gable end (clone the front gable)
+        // Create back gable
         const backGable = frontGable.clone("backGable");
         
         // Position back gable
-        backGable.position = new BABYLON.Vector3(
-            position.x,
-            position.y + 0.6 + wallHeight + (roofHeight / 2),
-            position.z - length / 2 - 0.01 // Slightly behind the wall
-        );
+        backGable.position.z = position.z - length/2 - 0.05;
         
-        // Rotate back gable to face the correct direction
-        backGable.rotation.z = Math.PI;
-        
-        // Make sure the gable is visible
-        backGable.isVisible = true;
+        // Rotate back gable
+        backGable.rotation.y = Math.PI;
         
         // Apply material
         backGable.material = material;
@@ -476,18 +464,43 @@ function createRoofBeams(scene, parent, position, width, length, wallHeight, roo
         // Create visible support beams for the roof
         const beamWidth = 0.15;
         const beamHeight = 0.15;
-        const numBeams = 5; // Number of visible beams
-        const beamSpacing = length / (numBeams - 1);
+        const numBeams = 3; // Reduced number of beams
+        const beamSpacing = length / (numBeams + 1);
         
-        for (let i = 0; i < numBeams; i++) {
+        // Create a ridge beam along the top of the roof
+        const ridgeBeam = BABYLON.MeshBuilder.CreateBox(
+            "ridgeBeam",
+            {
+                width: beamWidth,
+                height: beamHeight,
+                depth: length - 0.2 // Slightly shorter than the cabin
+            },
+            scene
+        );
+        
+        // Position the ridge beam at the peak of the roof
+        ridgeBeam.position = new BABYLON.Vector3(
+            position.x,
+            position.y + 0.6 + wallHeight + roofHeight - (beamHeight / 2),
+            position.z
+        );
+        
+        // Apply material
+        ridgeBeam.material = material;
+        
+        // Parent to the cabin
+        ridgeBeam.parent = parent;
+        
+        // Create cross beams
+        for (let i = 1; i <= numBeams; i++) {
             // Calculate position for this beam
             const z = position.z - (length / 2) + (i * beamSpacing);
             
-            // Create a simple beam using a box
-            const beam = BABYLON.MeshBuilder.CreateBox(
-                `roofBeam_${i}`,
+            // Create a cross beam
+            const crossBeam = BABYLON.MeshBuilder.CreateBox(
+                `crossBeam_${i}`,
                 {
-                    width: width + 0.6, // Slightly wider than the cabin
+                    width: width - 0.2, // Slightly narrower than the cabin
                     height: beamHeight,
                     depth: beamWidth
                 },
@@ -495,20 +508,17 @@ function createRoofBeams(scene, parent, position, width, length, wallHeight, roo
             );
             
             // Position the beam
-            beam.position = new BABYLON.Vector3(
+            crossBeam.position = new BABYLON.Vector3(
                 position.x,
-                position.y + 0.6 + wallHeight + (roofHeight / 3), // Position at 1/3 of roof height
+                position.y + 0.6 + wallHeight + 0.5, // Just above the walls
                 z
             );
             
-            // Make sure the beam is visible
-            beam.isVisible = true;
-            
             // Apply material
-            beam.material = material;
+            crossBeam.material = material;
             
             // Parent to the cabin
-            beam.parent = parent;
+            crossBeam.parent = parent;
         }
         
         console.log("Roof beams created successfully");
@@ -606,7 +616,7 @@ function createChimney(scene, parent, position, width, length, height, material)
     }
 }
 
-// Create the cabin door
+// FIX 7: Modified door function for better appearance
 function createDoor(scene, parent, position, width, length, height, material) {
     console.log("Creating cabin door");
     
@@ -622,7 +632,7 @@ function createDoor(scene, parent, position, width, length, height, material) {
             {
                 width: doorWidth + 0.3,
                 height: doorHeight + 0.3,
-                depth: 0.2
+                depth: 0.3
             },
             scene
         );
@@ -631,11 +641,8 @@ function createDoor(scene, parent, position, width, length, height, material) {
         doorFrame.position = new BABYLON.Vector3(
             position.x - (width / 4), // Offset to the left
             position.y + 0.6 + (doorHeight / 2), // Foundation + half door height
-            position.z + (length / 2) + 0.01 // Front wall with slight offset
+            position.z + (length / 2) // Front wall
         );
-        
-        // Make sure the door frame is visible
-        doorFrame.isVisible = true;
         
         // Apply material
         doorFrame.material = material;
@@ -661,18 +668,34 @@ function createDoor(scene, parent, position, width, length, height, material) {
             position.z + (length / 2) + 0.15 // Front wall with slight offset
         );
         
-        // Make sure the door is visible
-        door.isVisible = true;
-        
         // Create darker wood material for the door
         const doorMaterial = material.clone("doorMaterial");
-        doorMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.3, 0.2); // Darker wood
+        doorMaterial.diffuseColor = new BABYLON.Color3(0.35, 0.25, 0.15); // Darker wood
         
         // Apply material
         door.material = doorMaterial;
         
         // Parent to the cabin
         door.parent = parent;
+        
+        // Add door details - handle and hinges
+        const doorHandle = BABYLON.MeshBuilder.CreateSphere(
+            "doorHandle",
+            { diameter: 0.15 },
+            scene
+        );
+        
+        doorHandle.position = new BABYLON.Vector3(
+            position.x - (width / 4) + doorWidth/3,
+            position.y + 0.6 + (doorHeight / 2),
+            position.z + (length / 2) + 0.15 + doorThickness/2 + 0.05
+        );
+        
+        const handleMaterial = new BABYLON.StandardMaterial("handleMaterial", scene);
+        handleMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2); // Dark metal
+        handleMaterial.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+        doorHandle.material = handleMaterial;
+        doorHandle.parent = parent;
         
         console.log("Door created successfully");
     } catch (error) {
@@ -752,7 +775,7 @@ function createWindows(scene, parent, position, width, length, height, material)
     }
 }
 
-// Create a single window
+// FIX 8: Improved window function with glass
 function createSingleWindow(scene, parent, position, width, height, depth, material, rotation) {
     console.log("Creating single window at position:", position);
     
@@ -774,14 +797,87 @@ function createSingleWindow(scene, parent, position, width, height, depth, mater
         // Rotate window frame
         windowFrame.rotation.y = rotation;
         
-        // Make sure the window frame is visible
-        windowFrame.isVisible = true;
-        
         // Apply material
         windowFrame.material = material;
         
         // Parent to the cabin
         windowFrame.parent = parent;
+        
+        // Create window glass
+        const windowGlass = BABYLON.MeshBuilder.CreatePlane(
+            "windowGlass",
+            {
+                width: width - 0.1,
+                height: height - 0.1
+            },
+            scene
+        );
+        
+        // Create glass material
+        const glassMaterial = new BABYLON.StandardMaterial("glassMaterial", scene);
+        glassMaterial.diffuseColor = new BABYLON.Color3(0.8, 0.9, 1.0);
+        glassMaterial.alpha = 0.5; // Semi-transparent
+        glassMaterial.specularColor = new BABYLON.Color3(1, 1, 1);
+        glassMaterial.specularPower = 64;
+        
+        // Position glass in the frame
+        windowGlass.position = new BABYLON.Vector3(
+            position.x,
+            position.y,
+            position.z
+        );
+        
+        // Adjust position based on rotation to be slightly in front of frame
+        const offset = 0.05;
+        if (rotation === 0) {
+            windowGlass.position.z += offset;
+        } else if (rotation === Math.PI) {
+            windowGlass.position.z -= offset;
+        } else if (rotation === Math.PI/2) {
+            windowGlass.position.x -= offset;
+        } else if (rotation === -Math.PI/2) {
+            windowGlass.position.x += offset;
+        }
+        
+        // Rotate glass to match frame
+        windowGlass.rotation.y = rotation;
+        
+        // Apply material
+        windowGlass.material = glassMaterial;
+        
+        // Parent to the cabin
+        windowGlass.parent = parent;
+        
+        // Add cross in window (Nordic style)
+        const crossVertical = BABYLON.MeshBuilder.CreateBox(
+            "crossVertical",
+            {
+                width: 0.05,
+                height: height - 0.05,
+                depth: 0.05
+            },
+            scene
+        );
+        
+        crossVertical.position = windowGlass.position.clone();
+        crossVertical.rotation.y = rotation;
+        crossVertical.material = material;
+        crossVertical.parent = parent;
+        
+        const crossHorizontal = BABYLON.MeshBuilder.CreateBox(
+            "crossHorizontal",
+            {
+                width: width - 0.05,
+                height: 0.05,
+                depth: 0.05
+            },
+            scene
+        );
+        
+        crossHorizontal.position = windowGlass.position.clone();
+        crossHorizontal.rotation.y = rotation;
+        crossHorizontal.material = material;
+        crossHorizontal.parent = parent;
         
         console.log("Single window created successfully");
     } catch (error) {
@@ -789,9 +885,191 @@ function createSingleWindow(scene, parent, position, width, height, depth, mater
     }
 }
 
-// Create decorative elements
+// FIX 9: Add missing decorative elements for Nordic style
 function createDecorativeElements(scene, parent, position, width, length, height, woodMaterial, stoneMaterial) {
-    // Empty implementation to avoid errors
+    console.log("Creating decorative elements");
+    
+    try {
+        // Add dragon-head style carvings at roof peaks (front and back)
+        createDragonHeadCarving(scene, parent, position, width, length, height, woodMaterial, true); // Front
+        createDragonHeadCarving(scene, parent, position, width, length, height, woodMaterial, false); // Back
+        
+        // Add support beams on corners
+        createSupportBeams(scene, parent, position, width, length, height, woodMaterial);
+        
+        // Add some carved details around the door and windows
+        createCarvedDetails(scene, parent, position, width, length, height, woodMaterial);
+        
+        console.log("Decorative elements created successfully");
+    } catch (error) {
+        console.error("Error creating decorative elements:", error);
+    }
+}
+
+// Create dragon head carvings at roof peaks
+function createDragonHeadCarving(scene, parent, position, width, length, height, material, isFront) {
+    // Create a simplified dragon head shape
+    const dragonHead = BABYLON.MeshBuilder.CreateCylinder(
+        `dragonHead_${isFront ? 'front' : 'back'}`,
+        {
+            height: 1.2,
+            diameterTop: 0.1,
+            diameterBottom: 0.4,
+            tessellation: 8
+        },
+        scene
+    );
+    
+    // Position the dragon head at the roof peak
+    dragonHead.position = new BABYLON.Vector3(
+        position.x,
+        position.y + 0.6 + height + 3.5,
+        isFront ? position.z + length/2 + 1.0 : position.z - length/2 - 1.0
+    );
+    
+    // Rotate to point outward
+    dragonHead.rotation.x = Math.PI/2;
+    if (!isFront) {
+        dragonHead.rotation.y = Math.PI;
+    }
+    
+    // Apply material
+    dragonHead.material = material;
+    
+    // Parent to the cabin
+    dragonHead.parent = parent;
+    
+    // Add some details to the dragon head
+    const snout = BABYLON.MeshBuilder.CreateBox(
+        `dragonSnout_${isFront ? 'front' : 'back'}`,
+        {
+            width: 0.3,
+            height: 0.2,
+            depth: 0.5
+        },
+        scene
+    );
+    
+    // Position at the front of the dragon head
+    snout.position = new BABYLON.Vector3(
+        position.x,
+        position.y + 0.6 + height + 3.5,
+        isFront ? position.z + length/2 + 1.8 : position.z - length/2 - 1.8
+    );
+    
+    // Apply material
+    snout.material = material;
+    
+    // Parent to the cabin
+    snout.parent = parent;
+}
+
+// Create support beams on corners
+function createSupportBeams(scene, parent, position, width, length, height, material) {
+    // Create corner support beams
+    const beamPositions = [
+        { x: width/2 - 0.3, z: length/2 - 0.3 },
+        { x: -width/2 + 0.3, z: length/2 - 0.3 },
+        { x: width/2 - 0.3, z: -length/2 + 0.3 },
+        { x: -width/2 + 0.3, z: -length/2 + 0.3 }
+    ];
+    
+    beamPositions.forEach((beamPos, index) => {
+        const beam = BABYLON.MeshBuilder.CreateCylinder(
+            `cornerBeam_${index}`,
+            {
+                height: height + 1.5,
+                diameter: 0.4,
+                tessellation: 10
+            },
+            scene
+        );
+        
+        // Position at corners
+        beam.position = new BABYLON.Vector3(
+            position.x + beamPos.x,
+            position.y + 0.6 + height/2,
+            position.z + beamPos.z
+        );
+        
+        // Apply material
+        beam.material = material;
+        
+        // Parent to the cabin
+        beam.parent = parent;
+        
+        // Add beam caps for decoration
+        const beamCap = BABYLON.MeshBuilder.CreateCylinder(
+            `beamCap_${index}`,
+            {
+                height: 0.2,
+                diameter: 0.5,
+                tessellation: 10
+            },
+            scene
+        );
+        
+        beamCap.position = new BABYLON.Vector3(
+            position.x + beamPos.x,
+            position.y + 0.6 + height + 0.7,
+            position.z + beamPos.z
+        );
+        
+        beamCap.material = material;
+        beamCap.parent = parent;
+    });
+}
+
+// Create carved details around door and windows
+function createCarvedDetails(scene, parent, position, width, length, height, material) {
+    // Create a decorative border above the door
+    const doorDecoration = BABYLON.MeshBuilder.CreateBox(
+        "doorDecoration",
+        {
+            width: 2.0,
+            height: 0.4,
+            depth: 0.2
+        },
+        scene
+    );
+    
+    doorDecoration.position = new BABYLON.Vector3(
+        position.x - (width / 4), // Match door position
+        position.y + 0.6 + 2.4, // Above door
+        position.z + (length / 2) + 0.05
+    );
+    
+    doorDecoration.material = material;
+    doorDecoration.parent = parent;
+    
+    // Create Norse-style decorative elements at the corners of the roof
+    const roofHeight = 4;
+    
+    // Front corners
+    [1, -1].forEach((side, index) => {
+        const decoration = BABYLON.MeshBuilder.CreateCylinder(
+            `roofDecoration_${index}`,
+            {
+                height: 1.5,
+                diameterTop: 0.1,
+                diameterBottom: 0.3,
+                tessellation: 6
+            },
+            scene
+        );
+        
+        decoration.position = new BABYLON.Vector3(
+            position.x + side * (width/2),
+            position.y + 0.6 + height + roofHeight/2,
+            position.z + length/2
+        );
+        
+        decoration.rotation.x = Math.PI/6; // Slight angle
+        decoration.rotation.z = side * Math.PI/6; // Lean outward
+        
+        decoration.material = material;
+        decoration.parent = parent;
+    });
 }
 
 // Create stone texture details
