@@ -86,12 +86,20 @@ export async function createSimpleScene(engine) {
                 camera.target = new BABYLON.Vector3(15, 3, -35); // Cabin position
             }
             
-            // M key to view the mountains
+            // M key to view the northern mountains
             if (kbInfo.event.keyCode === 77) { // M key
                 camera.alpha = 0; // Directly facing north
                 camera.beta = Math.PI / 6; // Lower angle to see mountains better
                 camera.radius = 100; // Further back to see the whole range
-                camera.target = new BABYLON.Vector3(0, 15, -80); // Look toward mountains (northern edge)
+                camera.target = new BABYLON.Vector3(0, 15, -80); // Look toward northern mountains
+            }
+            
+            // N key to view the western mountains
+            if (kbInfo.event.keyCode === 78) { // N key
+                camera.alpha = Math.PI / 2; // Directly facing west
+                camera.beta = Math.PI / 6; // Lower angle to see mountains better
+                camera.radius = 100; // Further back to see the whole range
+                camera.target = new BABYLON.Vector3(-80, 15, 0); // Look toward western mountains
             }
         }
     });
@@ -216,7 +224,8 @@ export async function createSimpleScene(engine) {
     sceneControls.innerHTML = `
         <h4 style="margin-top: 0;">Scene Controls:</h4>
         <div style="margin-bottom: 10px;">
-            <button id="viewMountainsBtn" style="width: 100%; margin-bottom: 10px; padding: 5px;">View Mountains</button>
+            <button id="viewNorthMountainsBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">View North Mountains</button>
+            <button id="viewWestMountainsBtn" style="width: 100%; margin-bottom: 10px; padding: 5px;">View West Mountains</button>
             
             <h5 style="margin-top: 15px; margin-bottom: 5px;">Cabin Controls:</h5>
             <button id="selectCabinBtn" style="width: 100%; margin-bottom: 5px; padding: 5px;">Select Cabin</button>
@@ -293,7 +302,8 @@ export async function createSimpleScene(engine) {
             <li>Q/E: Adjust height</li>
             <li>R: Reset camera position</li>
             <li>C: View the cabin</li>
-            <li>M: View the mountains</li>
+            <li>M: View the northern mountains</li>
+            <li>N: View the western mountains</li>
         </ul>
     `;
     document.body.appendChild(debugText);
@@ -337,13 +347,26 @@ export async function createSimpleScene(engine) {
         const toggleTreeDragBtn = document.getElementById("toggleTreeDragBtn");
         const saveTreePosBtn = document.getElementById("saveTreePosBtn");
         
-        if (viewMountainsBtn) {
-            viewMountainsBtn.addEventListener("click", () => {
-                // Focus camera on mountains
+        const viewNorthMountainsBtn = document.getElementById("viewNorthMountainsBtn");
+        const viewWestMountainsBtn = document.getElementById("viewWestMountainsBtn");
+        
+        if (viewNorthMountainsBtn) {
+            viewNorthMountainsBtn.addEventListener("click", () => {
+                // Focus camera on northern mountains
                 camera.alpha = 0; // Directly facing north
                 camera.beta = Math.PI / 6; // Lower angle to see mountains better
                 camera.radius = 100; // Further back to see the whole range
-                camera.target = new BABYLON.Vector3(0, 15, -80); // Look toward mountains
+                camera.target = new BABYLON.Vector3(0, 15, -80); // Look toward northern mountains
+            });
+        }
+        
+        if (viewWestMountainsBtn) {
+            viewWestMountainsBtn.addEventListener("click", () => {
+                // Focus camera on western mountains
+                camera.alpha = Math.PI / 2; // Directly facing west
+                camera.beta = Math.PI / 6; // Lower angle to see mountains better
+                camera.radius = 100; // Further back to see the whole range
+                camera.target = new BABYLON.Vector3(-80, 15, 0); // Look toward western mountains
             });
         }
         

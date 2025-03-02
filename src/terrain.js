@@ -13,7 +13,7 @@ export class TerrainGenerator {
     }
     
     async createTerrain() {
-        this.log("Creating simple terrain with mountains at northern edge");
+        this.log("Creating terrain with mountains at northern and western edges");
         
         // Create a simple ground
         const ground = BABYLON.MeshBuilder.CreateGround(
@@ -78,29 +78,69 @@ export class TerrainGenerator {
                     height -= 1.5 * (0.05 - riverPath) / 0.05;
                 }
                 
+                // Variables to track mountain factors for blending
+                let mountainHeightNorth = 0;
+                let mountainHeightWest = 0;
+                let mountainFactorNorth = 0;
+                let mountainFactorWest = 0;
+                
                 // Add mountains at the northern edge (low z values)
                 if (nz < 0.2) { // Mountains in the northern 20% of the terrain
-                    // Calculate mountain height based on distance from north edge
-                    const mountainFactor = 1 - (nz / 0.2); // 1 at edge, 0 at 20% distance
+                    // Calculate mountain factor based on distance from north edge
+                    mountainFactorNorth = 1 - (nz / 0.2); // 1 at edge, 0 at 20% distance
                     
                     // Create varied mountain peaks using sine waves
-                    let mountainHeight = 0;
+                    mountainHeightNorth = 0;
                     
                     // Add several sine waves with different frequencies for natural-looking mountains
-                    mountainHeight += Math.sin(nx * 20) * 0.5;
-                    mountainHeight += Math.sin(nx * 10) * 0.25;
-                    mountainHeight += Math.sin(nx * 5) * 0.75;
-                    mountainHeight += Math.sin(nx * 2.5) * 1;
+                    mountainHeightNorth += Math.sin(nx * 20) * 0.5;
+                    mountainHeightNorth += Math.sin(nx * 10) * 0.25;
+                    mountainHeightNorth += Math.sin(nx * 5) * 0.75;
+                    mountainHeightNorth += Math.sin(nx * 2.5) * 1;
                     
                     // Normalize to 0-1 range and apply mountain factor
-                    mountainHeight = ((mountainHeight + 2.5) / 5) * mountainFactor * 25; // Max height of 25
+                    mountainHeightNorth = ((mountainHeightNorth + 2.5) / 5) * mountainFactorNorth * 25; // Max height of 25
                     
                     // Ensure mountains taper at the edges of the map
-                    const edgeFactor = 1 - Math.pow(Math.abs(nx - 0.5) * 2, 2);
-                    mountainHeight *= edgeFactor;
+                    const edgeFactorNorth = 1 - Math.pow(Math.abs(nx - 0.5) * 2, 2);
+                    mountainHeightNorth *= edgeFactorNorth;
+                }
+                
+                // Add mountains at the western edge (low x values)
+                if (nx < 0.2) { // Mountains in the western 20% of the terrain
+                    // Calculate mountain factor based on distance from west edge
+                    mountainFactorWest = 1 - (nx / 0.2); // 1 at edge, 0 at 20% distance
                     
-                    // Add mountain height to base height
-                    height += mountainHeight;
+                    // Create varied mountain peaks using sine waves
+                    mountainHeightWest = 0;
+                    
+                    // Add several sine waves with different frequencies for natural-looking mountains
+                    // Using different frequencies than the northern mountains for variety
+                    mountainHeightWest += Math.sin(nz * 18) * 0.6;
+                    mountainHeightWest += Math.sin(nz * 8) * 0.3;
+                    mountainHeightWest += Math.sin(nz * 4) * 0.8;
+                    mountainHeightWest += Math.sin(nz * 2) * 1.2;
+                    
+                    // Normalize to 0-1 range and apply mountain factor
+                    mountainHeightWest = ((mountainHeightWest + 2.9) / 5.8) * mountainFactorWest * 22; // Slightly lower than northern mountains
+                    
+                    // Ensure mountains taper at the edges of the map
+                    const edgeFactorWest = 1 - Math.pow(Math.abs(nz - 0.5) * 2, 2);
+                    mountainHeightWest *= edgeFactorWest;
+                }
+                
+                // Special handling for northwest corner where both mountain ranges meet
+                if (nx < 0.2 && nz < 0.2) {
+                    // Use a blended approach for the corner to create a natural-looking peak
+                    const cornerBlendFactor = Math.sqrt(mountainFactorNorth * mountainFactorWest);
+                    const blendedHeight = Math.max(mountainHeightNorth, mountainHeightWest) + 
+                                         (Math.min(mountainHeightNorth, mountainHeightWest) * 0.3);
+                    
+                    // Add the blended height to the base height
+                    height += blendedHeight;
+                } else {
+                    // Add individual mountain heights for non-corner areas
+                    height += mountainHeightNorth + mountainHeightWest;
                 }
                 
                 // Set the vertex height
